@@ -99,7 +99,7 @@ const Index = () => {
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
-    if (selectedCity) params.set('city', selectedCity);
+    if (selectedCity && selectedCity !== "all") params.set('city', selectedCity);
     navigate(`/search?${params.toString()}`);
   };
 
@@ -139,7 +139,7 @@ const Index = () => {
                       <SelectValue placeholder="Escolha a cidade" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as cidades</SelectItem>
+                      <SelectItem value="all">Todas as cidades</SelectItem>
                       {cities.map((city) => (
                         <SelectItem key={city.id} value={city.id}>
                           {city.name}, {city.state}
