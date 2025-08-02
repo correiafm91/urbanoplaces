@@ -64,8 +64,9 @@ export default function Auth() {
 
         toast({
           title: "Cadastro realizado com sucesso!",
-          description: "Verifique seu email para confirmar sua conta.",
+          description: "Você foi logado automaticamente e pode começar a usar o site.",
         });
+        navigate("/");
       }
     } catch (error: any) {
       toast({
