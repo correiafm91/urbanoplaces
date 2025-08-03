@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
+import { VerificationModal } from "@/components/VerificationModal";
+import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -36,10 +38,13 @@ interface City {
 
 export default function CreateListing() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -59,14 +64,32 @@ export default function CreateListing() {
   });
 
   useEffect(() => {
-    // Check if user is logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeUser = async () => {
+      // Check if user is logged in
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         navigate("/auth");
         return;
       }
+      
       setUser(session.user);
-    });
+      
+      // Check user profile and verification status
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single();
+        
+      setProfile(profileData);
+      
+      // If user is not verified, show verification modal
+      if (!profileData?.is_verified) {
+        setShowVerificationModal(true);
+      }
+    };
+
+    initializeUser();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -118,11 +141,33 @@ export default function CreateListing() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) {
+  const handleVerificationComplete = async () => {
+    // Refresh profile data
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user?.id)
+      .single();
+      
+    setProfile(profileData);
+    setShowVerificationModal(false);
+  };
+
+  const handlePlanSelected = (planType: string) => {
+    setSelectedPlan(planType);
+    setShowPlanModal(false);
+    // Continue with listing creation
+    proceedWithListing();
+  };
+
+  const proceedWithListing = async () => {
+    if (!selectedPlan) return;
+    
+    // Check if user can create more ads
+    if (selectedPlan === "free" && profile?.free_ads_used >= 1) {
       toast({
-        title: "Erro",
-        description: "Você precisa estar logado para criar um anúncio",
+        title: "Limite de anúncios grátis atingido",
+        description: "Você já usou seu anúncio grátis. Compre um pacote para anunciar mais.",
         variant: "destructive",
       });
       return;
@@ -131,47 +176,49 @@ export default function CreateListing() {
     setLoading(true);
 
     try {
-      // Get user profile to ensure it exists
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError || !profile) {
-        toast({
-          title: "Erro",
-          description: "Perfil não encontrado. Tente fazer login novamente.",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      const formValues = form.getValues();
+      
       // Create the listing
       const { data, error } = await supabase
         .from('listings')
         .insert({
-          user_id: user.id,
-          title: values.title,
-          description: values.description,
-          price: parseFloat(values.price),
-          brand: values.brand,
-          model: values.model,
-          year: parseInt(values.year),
-          mileage: values.mileage ? parseInt(values.mileage) : null,
-          color: values.color || null,
-          city_id: values.city_id,
+          user_id: user!.id,
+          title: formValues.title,
+          description: formValues.description,
+          price: parseFloat(formValues.price),
+          brand: formValues.brand,
+          model: formValues.model,
+          year: parseInt(formValues.year),
+          mileage: formValues.mileage ? parseInt(formValues.mileage) : null,
+          color: formValues.color || null,
+          city_id: formValues.city_id,
           images: images,
           is_active: true,
+          is_featured: selectedPlan !== "free",
         })
         .select()
         .single();
 
       if (error) throw error;
 
+      // Update user's ad count
+      if (selectedPlan === "free") {
+        await supabase
+          .from('profiles')
+          .update({ free_ads_used: (profile?.free_ads_used || 0) + 1 })
+          .eq('user_id', user!.id);
+      } else {
+        await supabase
+          .from('profiles')
+          .update({ paid_ads_balance: Math.max(0, (profile?.paid_ads_balance || 0) - 1) })
+          .eq('user_id', user!.id);
+      }
+
       toast({
         title: "Anúncio criado com sucesso!",
-        description: "Seu anúncio foi publicado e está disponível para visualização.",
+        description: selectedPlan === "free" 
+          ? "Seu anúncio foi publicado." 
+          : "Seu anúncio destacado foi publicado!",
       });
 
       navigate(`/listing/${data.id}`);
@@ -185,6 +232,30 @@ export default function CreateListing() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para criar um anúncio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!profile?.is_verified) {
+      toast({
+        title: "Verificação necessária",
+        description: "Complete sua verificação antes de anunciar",
+        variant: "destructive",
+      });
+      setShowVerificationModal(true);
+      return;
+    }
+
+    // Show plan selection modal
+    setShowPlanModal(true);
   };
 
   const motorcycleBrands = [
@@ -487,6 +558,27 @@ export default function CreateListing() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Verification Modal */}
+      {showVerificationModal && user && (
+        <VerificationModal
+          isOpen={showVerificationModal}
+          onClose={() => setShowVerificationModal(false)}
+          user={user}
+          cities={cities}
+          onVerificationComplete={handleVerificationComplete}
+        />
+      )}
+
+      {/* Plan Selection Modal */}
+      {showPlanModal && user && (
+        <PlanSelectionModal
+          isOpen={showPlanModal}
+          onClose={() => setShowPlanModal(false)}
+          user={user}
+          onPlanSelected={handlePlanSelected}
+        />
+      )}
     </div>
   );
 }

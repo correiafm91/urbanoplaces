@@ -117,7 +117,7 @@ const Index = () => {
               Encontre sua moto ideal
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              O maior marketplace de motos do Brasil. Compre e venda com segurança.
+              Marketplace de veículos mais seguro do Brasil.
             </p>
           </div>
           
@@ -221,23 +221,13 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Security Features */}
       <section className="py-16 bg-muted/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">1000+</div>
-              <div className="text-lg text-muted-foreground">Motos anunciadas</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">50+</div>
-              <div className="text-lg text-muted-foreground">Cidades atendidas</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">98%</div>
-              <div className="text-lg text-muted-foreground">Clientes satisfeitos</div>
-            </div>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold mb-8">Segurança em primeiro lugar</h2>
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            Nossa plataforma oferece ferramentas e dicas para garantir transações seguras entre compradores e vendedores.
+          </p>
         </div>
       </section>
 
@@ -253,7 +243,7 @@ const Index = () => {
                 <span className="text-xl font-bold">Urbano.bikes</span>
               </div>
               <p className="text-background/80">
-                O maior marketplace de motos do Brasil. Compre e venda com segurança.
+                Marketplace de veículos mais seguro do Brasil.
               </p>
             </div>
             <div>
@@ -268,14 +258,14 @@ const Index = () => {
               <h3 className="font-semibold mb-4">Suporte</h3>
               <ul className="space-y-2 text-background/80">
                 <li><a href="#" className="hover:text-background">Como funciona</a></li>
-                <li><a href="#" className="hover:text-background">Dicas de segurança</a></li>
+                <li><a href="/safety-tips" className="hover:text-background">Dicas de segurança</a></li>
                 <li><a href="#" className="hover:text-background">Contato</a></li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold mb-4">Legal</h3>
               <ul className="space-y-2 text-background/80">
-                <li><a href="#" className="hover:text-background">Termos de uso</a></li>
+                <li><a href="/terms" className="hover:text-background">Termos de uso</a></li>
                 <li><a href="#" className="hover:text-background">Privacidade</a></li>
                 <li><a href="#" className="hover:text-background">Cookies</a></li>
               </ul>

@@ -42,11 +42,14 @@ export type Database = {
           color: string | null
           created_at: string
           description: string
+          expires_at: string | null
           id: string
           images: string[] | null
           is_active: boolean | null
+          is_featured: boolean | null
           mileage: number | null
           model: string
+          plan_id: string | null
           price: number
           title: string
           updated_at: string
@@ -59,11 +62,14 @@ export type Database = {
           color?: string | null
           created_at?: string
           description: string
+          expires_at?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          is_featured?: boolean | null
           mileage?: number | null
           model: string
+          plan_id?: string | null
           price: number
           title: string
           updated_at?: string
@@ -76,11 +82,14 @@ export type Database = {
           color?: string | null
           created_at?: string
           description?: string
+          expires_at?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          is_featured?: boolean | null
           mileage?: number | null
           model?: string
+          plan_id?: string | null
           price?: number
           title?: string
           updated_at?: string
@@ -96,6 +105,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "listings_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "listings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -104,35 +120,92 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          plan_type: string
+          price: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          plan_type: string
+          price: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          plan_type?: string
+          price?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           city_id: string | null
+          cnpj: string | null
+          cpf: string | null
           created_at: string
+          free_ads_used: number | null
           full_name: string
           id: string
+          instagram: string | null
+          is_verified: boolean | null
+          paid_ads_balance: number | null
           phone: string | null
+          razao_social: string | null
           updated_at: string
           user_id: string
+          user_type: string | null
           whatsapp: string | null
         }
         Insert: {
           city_id?: string | null
+          cnpj?: string | null
+          cpf?: string | null
           created_at?: string
+          free_ads_used?: number | null
           full_name: string
           id?: string
+          instagram?: string | null
+          is_verified?: boolean | null
+          paid_ads_balance?: number | null
           phone?: string | null
+          razao_social?: string | null
           updated_at?: string
           user_id: string
+          user_type?: string | null
           whatsapp?: string | null
         }
         Update: {
           city_id?: string | null
+          cnpj?: string | null
+          cpf?: string | null
           created_at?: string
+          free_ads_used?: number | null
           full_name?: string
           id?: string
+          instagram?: string | null
+          is_verified?: boolean | null
+          paid_ads_balance?: number | null
           phone?: string | null
+          razao_social?: string | null
           updated_at?: string
           user_id?: string
+          user_type?: string | null
           whatsapp?: string | null
         }
         Relationships: [
@@ -141,6 +214,35 @@ export type Database = {
             columns: ["city_id"]
             isOneToOne: false
             referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_listings: {
+        Row: {
+          created_at: string | null
+          id: string
+          listing_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          listing_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          listing_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_listings_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
         ]
