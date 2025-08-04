@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ListingCard } from "@/components/ListingCard";
-import { Search, Car, Motorcycle, Instagram, Shield, Eye, Users, TrendingUp } from "lucide-react";
+import { Search, Car, Bike, Instagram, Shield, Eye, Users, TrendingUp } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -130,7 +130,7 @@ export default function Index() {
               className="bg-white hover:bg-white/90"
               onClick={() => navigate('/search?category=motos')}
             >
-              <Motorcycle className="w-5 h-5 mr-2" />
+              <Bike className="w-5 h-5 mr-2" />
               Ver Motos
             </Button>
           </div>
@@ -168,7 +168,7 @@ export default function Index() {
             {/* Motos */}
             <div>
               <h3 className="text-2xl font-bold mb-6 text-black flex items-center gap-3">
-                <Motorcycle className="w-6 h-6 text-[#FFCD44]" />
+                <Bike className="w-6 h-6 text-[#FFCD44]" />
                 Motos
               </h3>
               <div className="grid gap-3">
