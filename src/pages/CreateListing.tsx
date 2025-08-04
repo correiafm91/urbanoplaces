@@ -1,55 +1,60 @@
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { Navbar } from "@/components/Navbar";
-import { VerificationModal } from "@/components/VerificationModal";
-import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
-import { Upload, X, ImageIcon } from "lucide-react";
-
-const formSchema = z.object({
-  title: z.string().min(10, "Título deve ter pelo menos 10 caracteres"),
-  description: z.string().min(50, "Descrição deve ter pelo menos 50 caracteres"),
-  price: z.string().min(1, "Preço é obrigatório"),
-  brand: z.string().min(1, "Marca é obrigatória"),
-  model: z.string().min(1, "Modelo é obrigatório"),
-  year: z.string().min(4, "Ano é obrigatório"),
-  mileage: z.string().optional(),
-  color: z.string().optional(),
-  city_id: z.string().min(1, "Cidade é obrigatória"),
-});
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { Car, Upload, X } from "lucide-react";
+import { VerificationModal } from "@/components/VerificationModal";
+import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 
 interface City {
   id: string;
   name: string;
   state: string;
+  zip_code?: string;
 }
 
+const carBrands = ["Toyota", "Honda", "Ford", "Chevrolet", "Volkswagen"];
+const motoBrands = ["Honda", "Yamaha", "Suzuki"];
+
+const listingSchema = z.object({
+  title: z.string().min(5, "Título deve ter pelo menos 5 caracteres"),
+  description: z.string().min(20, "Descrição deve ter pelo menos 20 caracteres"),
+  price: z.string().min(1, "Preço é obrigatório"),
+  brand: z.string().min(1, "Marca é obrigatória"),
+  model: z.string().min(1, "Modelo é obrigatório"),
+  year: z.string().min(4, "Ano deve ter 4 dígitos"),
+  mileage: z.string().optional(),
+  color: z.string().optional(),
+  city_id: z.string().min(1, "Cidade é obrigatória"),
+  zip_code: z.string().optional(),
+});
+
 export default function CreateListing() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [images, setImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<"carros" | "motos" | "">("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof listingSchema>>({
+    resolver: zodResolver(listingSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -60,52 +65,50 @@ export default function CreateListing() {
       mileage: "",
       color: "",
       city_id: "",
+      zip_code: "",
     },
   });
 
   useEffect(() => {
-    const initializeUser = async () => {
-      // Check if user is logged in
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        navigate("/auth");
-        return;
-      }
-      
-      setUser(session.user);
-      
-      // Check user profile and verification status
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-        
-      setProfile(profileData);
-      
-      // If user is not verified, show verification modal
-      if (!profileData?.is_verified) {
-        setShowVerificationModal(true);
-      }
-    };
-
-    initializeUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!session?.user) {
-          navigate("/auth");
-          return;
-        }
-        setUser(session.user);
-      }
-    );
-
+    checkAuth();
     fetchCities();
+  }, []);
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    setUser(user);
+
+    // Check if user profile is complete
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!profile) {
+      toast({
+        title: "Perfil não encontrado",
+        description: "Faça login novamente",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    setProfile(profile);
+
+    // Check if user is verified
+    if (!profile.is_verified) {
+      setShowVerificationModal(true);
+    }
+
+    setLoading(false);
+  };
 
   const fetchCities = async () => {
     try {
@@ -121,19 +124,26 @@ export default function CreateListing() {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          setImages(prev => [...prev, result]);
-        };
-        reader.readAsDataURL(file);
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Arquivo muito grande",
+          description: "Imagem deve ter no máximo 5MB",
+          variant: "destructive",
+        });
+        return;
       }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setImages(prev => [...prev, result]);
+      };
+      reader.readAsDataURL(file);
     });
   };
 
@@ -141,233 +151,166 @@ export default function CreateListing() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleVerificationComplete = async () => {
-    // Refresh profile data
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user?.id)
-      .single();
-      
-    setProfile(profileData);
-    setShowVerificationModal(false);
-  };
-
-  const handlePlanSelected = (planType: string) => {
-    setSelectedPlan(planType);
-    setShowPlanModal(false);
-    // Continue with listing creation
-    proceedWithListing();
-  };
-
-  const proceedWithListing = async () => {
-    if (!selectedPlan) return;
-    
-    // Check if user can create more ads
-    if (selectedPlan === "free" && profile?.free_ads_used >= 1) {
-      toast({
-        title: "Limite de anúncios grátis atingido",
-        description: "Você já usou seu anúncio grátis. Compre um pacote para anunciar mais.",
-        variant: "destructive",
-      });
+  const onSubmit = async (values: z.infer<typeof listingSchema>) => {
+    if (!profile?.is_verified) {
+      setShowVerificationModal(true);
       return;
     }
 
-    setLoading(true);
-
+    setSubmitting(true);
     try {
-      const formValues = form.getValues();
-      
-      // Create the listing
-      const { data, error } = await supabase
+      const { data: listing, error } = await supabase
         .from('listings')
         .insert({
-          user_id: user!.id,
-          title: formValues.title,
-          description: formValues.description,
-          price: parseFloat(formValues.price),
-          brand: formValues.brand,
-          model: formValues.model,
-          year: parseInt(formValues.year),
-          mileage: formValues.mileage ? parseInt(formValues.mileage) : null,
-          color: formValues.color || null,
-          city_id: formValues.city_id,
+          title: values.title,
+          description: values.description,
+          price: parseFloat(values.price.replace(/\D/g, '')),
+          brand: values.brand,
+          model: values.model,
+          year: parseInt(values.year),
+          mileage: values.mileage ? parseInt(values.mileage.replace(/\D/g, '')) : null,
+          color: values.color || null,
+          city_id: values.city_id,
+          user_id: user.id,
           images: images,
           is_active: true,
-          is_featured: selectedPlan !== "free",
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Update user's ad count
-      if (selectedPlan === "free") {
-        await supabase
-          .from('profiles')
-          .update({ free_ads_used: (profile?.free_ads_used || 0) + 1 })
-          .eq('user_id', user!.id);
-      } else {
-        await supabase
-          .from('profiles')
-          .update({ paid_ads_balance: Math.max(0, (profile?.paid_ads_balance || 0) - 1) })
-          .eq('user_id', user!.id);
-      }
+      // Create listing details entry
+      await supabase
+        .from('listing_details')
+        .insert({
+          listing_id: listing.id,
+          views_count: 0,
+          contact_clicks: 0,
+        });
 
       toast({
-        title: "Anúncio criado com sucesso!",
-        description: selectedPlan === "free" 
-          ? "Seu anúncio foi publicado." 
-          : "Seu anúncio destacado foi publicado!",
+        title: "Anúncio criado!",
+        description: "Seu anúncio foi publicado com sucesso",
       });
 
-      navigate(`/listing/${data.id}`);
+      // Show plan selection modal
+      setShowPlanModal(true);
     } catch (error: any) {
-      console.error('Error creating listing:', error);
       toast({
         title: "Erro ao criar anúncio",
-        description: error.message || "Ocorreu um erro inesperado",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) {
-      toast({
-        title: "Erro",
-        description: "Você precisa estar logado para criar um anúncio",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!profile?.is_verified) {
-      toast({
-        title: "Verificação necessária",
-        description: "Complete sua verificação antes de anunciar",
-        variant: "destructive",
-      });
-      setShowVerificationModal(true);
-      return;
-    }
-
-    // Show plan selection modal
-    setShowPlanModal(true);
+  const handleVerificationComplete = () => {
+    setShowVerificationModal(false);
+    setProfile({ ...profile, is_verified: true });
   };
 
-  const motorcycleBrands = [
-    "Honda", "Yamaha", "Suzuki", "Kawasaki", "BMW", "Ducati", 
-    "Harley-Davidson", "KTM", "Triumph", "Aprilia", "MV Agusta", 
-    "Benelli", "Shineray", "Dafra", "Traxx", "Outras"
-  ];
+  const handlePlanSelected = (planType: string) => {
+    setShowPlanModal(false);
+    navigate('/', { 
+      state: { 
+        message: planType === 'free' 
+          ? "Anúncio publicado com sucesso!" 
+          : "Anúncio publicado com destaque!"
+      }
+    });
+  };
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
+  const availableBrands = selectedCategory === "carros" ? carBrands : selectedCategory === "motos" ? motoBrands : [...carBrands, ...motoBrands];
 
-  const colors = [
-    "Preto", "Branco", "Prata", "Cinza", "Azul", "Vermelho", 
-    "Verde", "Amarelo", "Laranja", "Roxo", "Dourado", "Outras"
-  ];
-
-  if (!user) {
-    return <div>Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFCD44]"></div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-      
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Criar Anúncio</CardTitle>
-            <CardDescription>
-              Preencha as informações da sua moto para criar um anúncio
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Images Upload */}
-                <div className="space-y-4">
-                  <Label>Fotos da moto</Label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="cursor-pointer flex flex-col items-center"
-                    >
-                      <Upload className="w-12 h-12 text-muted-foreground mb-2" />
-                      <span className="text-muted-foreground">
-                        Clique para adicionar fotos (máximo 10)
-                      </span>
-                    </label>
-                  </div>
-                  
-                  {images.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {images.map((image, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={image}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          <Button
-                            size="icon"
-                            variant="destructive"
-                            className="absolute -top-2 -right-2 h-6 w-6"
-                            onClick={() => removeImage(index)}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-[#FFCD44] rounded-full">
+              <Car className="w-6 h-6 text-black" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-black">Criar Anúncio</h1>
+              <p className="text-muted-foreground">Publique seu veículo gratuitamente</p>
+            </div>
+          </div>
+        </div>
 
-                {/* Title */}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Category Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-black">Categoria</CardTitle>
+                <CardDescription>Selecione o tipo do seu veículo</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    type="button"
+                    variant={selectedCategory === "carros" ? "default" : "outline"}
+                    onClick={() => setSelectedCategory("carros")}
+                    className="h-16"
+                  >
+                    <Car className="w-6 h-6 mr-2" />
+                    Carros
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedCategory === "motos" ? "default" : "outline"}
+                    onClick={() => setSelectedCategory("motos")}
+                    className="h-16"
+                  >
+                    🏍️
+                    <span className="ml-2">Motos</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Basic Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-black">Informações Básicas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Título do anúncio</FormLabel>
+                      <FormLabel className="text-black">Título do Anúncio</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Ex: Honda CB 600F Hornet 2018 - Excelente estado"
-                          {...field}
-                        />
+                        <Input placeholder="Ex: Honda Civic 2020 automático" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Description */}
                 <FormField
                   control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descrição</FormLabel>
+                      <FormLabel className="text-black">Descrição</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Descreva sua moto: estado de conservação, histórico, modificações, etc."
-                          className="min-h-32"
-                          {...field}
+                        <Textarea 
+                          placeholder="Descreva seu veículo em detalhes..."
+                          className="min-h-[100px]"
+                          {...field} 
                         />
                       </FormControl>
                       <FormMessage />
@@ -375,34 +318,13 @@ export default function CreateListing() {
                   )}
                 />
 
-                {/* Price */}
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preço (R$)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Ex: 15000"
-                          min="0"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Brand and Model */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="brand"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Marca</FormLabel>
+                        <FormLabel className="text-black">Marca</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -410,10 +332,8 @@ export default function CreateListing() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {motorcycleBrands.map((brand) => (
-                              <SelectItem key={brand} value={brand}>
-                                {brand}
-                              </SelectItem>
+                            {availableBrands.map((brand) => (
+                              <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -427,9 +347,9 @@ export default function CreateListing() {
                     name="model"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Modelo</FormLabel>
+                        <FormLabel className="text-black">Modelo</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: CB 600F Hornet" {...field} />
+                          <Input placeholder="Ex: Civic" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -437,28 +357,16 @@ export default function CreateListing() {
                   />
                 </div>
 
-                {/* Year, Mileage, Color */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="year"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ano</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Ano" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {years.map((year) => (
-                              <SelectItem key={year} value={year.toString()}>
-                                {year}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormLabel className="text-black">Ano</FormLabel>
+                        <FormControl>
+                          <Input placeholder="2020" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -469,14 +377,9 @@ export default function CreateListing() {
                     name="mileage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Quilometragem</FormLabel>
+                        <FormLabel className="text-black">Quilometragem</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Ex: 25000"
-                            min="0"
-                            {...field}
-                          />
+                          <Input placeholder="50000" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -488,44 +391,63 @@ export default function CreateListing() {
                     name="color"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Cor</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a cor" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {colors.map((color) => (
-                              <SelectItem key={color} value={color}>
-                                {color}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormLabel className="text-black">Cor</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Branco" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
-                {/* City */}
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-black">Preço (R$)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="50000"
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '');
+                            const formatted = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                            field.onChange(formatted);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Location */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-black">Localização</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
                   name="city_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Cidade</FormLabel>
+                      <FormLabel className="text-black">Cidade</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione a cidade" />
+                            <SelectValue placeholder="Selecione sua cidade" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {cities.map((city) => (
                             <SelectItem key={city.id} value={city.id}>
                               {city.name}, {city.state}
+                              {city.zip_code && ` - ${city.zip_code}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -535,32 +457,79 @@ export default function CreateListing() {
                   )}
                 />
 
-                {/* Submit Button */}
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate("/")}
-                    className="w-full"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full"
-                  >
-                    {loading ? "Publicando..." : "Publicar Anúncio"}
-                  </Button>
+                <FormField
+                  control={form.control}
+                  name="zip_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-black">CEP (Opcional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="01234-567" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Images */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-black">Fotos</CardTitle>
+                <CardDescription>Adicione fotos do seu veículo (máximo 5MB cada)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {images.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image}
+                        alt={`Upload ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  {images.length < 10 && (
+                    <Label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-muted-foreground/50">
+                      <Upload className="h-6 w-6 mb-1 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Adicionar</span>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                    </Label>
+                  )}
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+
+            <Button 
+              type="submit" 
+              disabled={submitting}
+              className="w-full bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
+              size="lg"
+            >
+              {submitting ? "Publicando..." : "Publicar Anúncio"}
+            </Button>
+          </form>
+        </Form>
       </div>
 
-      {/* Verification Modal */}
-      {showVerificationModal && user && (
+      {showVerificationModal && (
         <VerificationModal
           isOpen={showVerificationModal}
           onClose={() => setShowVerificationModal(false)}
@@ -570,11 +539,13 @@ export default function CreateListing() {
         />
       )}
 
-      {/* Plan Selection Modal */}
-      {showPlanModal && user && (
+      {showPlanModal && (
         <PlanSelectionModal
           isOpen={showPlanModal}
-          onClose={() => setShowPlanModal(false)}
+          onClose={() => {
+            setShowPlanModal(false);
+            navigate('/');
+          }}
           user={user}
           onPlanSelected={handlePlanSelected}
         />

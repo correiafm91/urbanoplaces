@@ -20,20 +20,58 @@ export type Database = {
           id: string
           name: string
           state: string
+          zip_code: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           state: string
+          zip_code?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           state?: string
+          zip_code?: string | null
         }
         Relationships: []
+      }
+      listing_details: {
+        Row: {
+          contact_clicks: number | null
+          created_at: string | null
+          id: string
+          listing_id: string
+          updated_at: string | null
+          views_count: number | null
+        }
+        Insert: {
+          contact_clicks?: number | null
+          created_at?: string | null
+          id?: string
+          listing_id: string
+          updated_at?: string | null
+          views_count?: number | null
+        }
+        Update: {
+          contact_clicks?: number | null
+          created_at?: string | null
+          id?: string
+          listing_id?: string
+          updated_at?: string | null
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_details_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listings: {
         Row: {
@@ -166,6 +204,7 @@ export type Database = {
           is_verified: boolean | null
           paid_ads_balance: number | null
           phone: string | null
+          phone_display: string | null
           razao_social: string | null
           updated_at: string
           user_id: string
@@ -184,6 +223,7 @@ export type Database = {
           is_verified?: boolean | null
           paid_ads_balance?: number | null
           phone?: string | null
+          phone_display?: string | null
           razao_social?: string | null
           updated_at?: string
           user_id: string
@@ -202,6 +242,7 @@ export type Database = {
           is_verified?: boolean | null
           paid_ads_balance?: number | null
           phone?: string | null
+          phone_display?: string | null
           razao_social?: string | null
           updated_at?: string
           user_id?: string
@@ -240,6 +281,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "saved_listings_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          listing_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          listing_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          listing_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_listing_id_fkey"
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"

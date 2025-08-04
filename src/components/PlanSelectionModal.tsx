@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Star, Shield, Zap } from "lucide-react";
+import { Copy, Check, Star, Shield, Zap, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -150,10 +151,18 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Escolha seu plano de destaque</DialogTitle>
+        <DialogHeader className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-8 w-8"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <DialogTitle className="text-black">Escolha seu plano de destaque</DialogTitle>
           <DialogDescription>
             Válido por 30 dias - Destaque seu anúncio e venda mais rápido!
           </DialogDescription>
@@ -167,14 +176,14 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
                 <Card key={plan.id} className={`cursor-pointer hover:shadow-lg transition-shadow ${plan.color}`}>
                   <CardHeader className="text-center">
                     <div className="mx-auto mb-2">
-                      <IconComponent className="w-8 h-8 text-primary" />
+                      <IconComponent className="w-8 h-8 text-[#FFCD44]" />
                     </div>
-                    <CardTitle className="flex items-center justify-center gap-2">
+                    <CardTitle className="flex items-center justify-center gap-2 text-black">
                       {plan.name}
-                      <Badge variant="secondary">💎</Badge>
+                      <Badge className="bg-[#FFCD44] text-black">💎</Badge>
                     </CardTitle>
                     <CardDescription>
-                      <span className="text-2xl font-bold text-primary">R$ {plan.price}</span>
+                      <span className="text-2xl font-bold text-[#FFCD44]">R$ {plan.price}</span>
                       <br />
                       <span className="text-sm">{plan.duration}</span>
                     </CardDescription>
@@ -190,7 +199,7 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
                     </ul>
                     <Button 
                       onClick={() => handlePlanSelect(plan.id)}
-                      className="w-full"
+                      className="w-full bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
                     >
                       Escolher {plan.name}
                     </Button>
@@ -202,7 +211,7 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
         ) : (
           <div className="space-y-6">
             <div className="text-center">
-              <h3 className="text-xl font-semibold mb-2">
+              <h3 className="text-xl font-semibold mb-2 text-black">
                 Plano {selectedPlanData?.name} - R$ {selectedPlanData?.price}
               </h3>
               <p className="text-muted-foreground">
@@ -212,7 +221,7 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-center">Código PIX</CardTitle>
+                <CardTitle className="text-center text-black">Código PIX</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted p-4 rounded-lg break-all font-mono text-sm mb-4">
@@ -220,7 +229,7 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
                 </div>
                 <Button 
                   onClick={() => copyPixCode(selectedPlanData?.pixCode || "")}
-                  className="w-full"
+                  className="w-full bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
                   variant="outline"
                 >
                   <Copy className="w-4 h-4 mr-2" />
@@ -244,7 +253,7 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
               {canConfirmPayment && (
                 <Button
                   onClick={confirmPayment}
-                  className="flex-1"
+                  className="flex-1 bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
                 >
                   Confirmar Pagamento
                 </Button>
@@ -263,7 +272,7 @@ export function PlanSelectionModal({ isOpen, onClose, user, onPlanSelected }: Pl
               Continuar com anúncio grátis
             </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">
-              ⚠️ Limite: 1 anúncio grátis por usuário
+              ✅ Anúncios gratuitos são ilimitados!
             </p>
           </div>
         )}
