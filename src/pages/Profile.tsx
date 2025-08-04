@@ -125,6 +125,7 @@ export default function Profile() {
           price,
           is_active,
           created_at,
+          category,
           plans(plan_type)
         `)
         .eq('user_id', userId)

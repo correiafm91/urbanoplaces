@@ -234,7 +234,7 @@ export default function ListingDetail() {
               <ImageCarousel
                 images={listing.images || []}
                 title={listing.title}
-                currentImageIndex={currentImageIndex}
+                currentIndex={currentImageIndex}
                 onIndexChange={setCurrentImageIndex}
               />
               
