@@ -28,16 +28,21 @@ interface Listing {
   is_featured: boolean;
 }
 
-const carBrands = ["Toyota", "Honda", "Ford", "Chevrolet", "Volkswagen"];
-const motoBrands = ["Honda", "Yamaha", "Suzuki"];
+const carBrands = [
+  "Toyota", "Honda", "Ford", "Chevrolet", "Volkswagen"
+];
+
+const motoBrands = [
+  "Honda", "Yamaha", "Suzuki", "Kawasaki", "BMW", "Harley-Davidson"
+];
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
-  const [selectedBrand, setSelectedBrand] = useState(searchParams.get('brand') || '');
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
+  const [selectedBrand, setSelectedBrand] = useState(searchParams.get('brand') || 'all');
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all');
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
   const [showFilters, setShowFilters] = useState(false);
@@ -70,7 +75,7 @@ export default function Search() {
         query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%`);
       }
 
-      if (brand) {
+      if (brand && brand !== 'all') {
         query = query.eq('brand', brand);
       }
 
@@ -88,7 +93,7 @@ export default function Search() {
       
       // Filter by category (car/moto) based on brand
       let filteredData = data || [];
-      if (category) {
+      if (category && category !== 'all') {
         if (category === 'carros') {
           filteredData = data?.filter(listing => 
             carBrands.some(brand => brand.toLowerCase() === listing.brand.toLowerCase())
@@ -112,8 +117,8 @@ export default function Search() {
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('q', searchTerm);
-    if (selectedBrand) params.set('brand', selectedBrand);
-    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedBrand && selectedBrand !== 'all') params.set('brand', selectedBrand);
+    if (selectedCategory && selectedCategory !== 'all') params.set('category', selectedCategory);
     if (minPrice) params.set('minPrice', minPrice);
     if (maxPrice) params.set('maxPrice', maxPrice);
     
@@ -122,16 +127,11 @@ export default function Search() {
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedBrand('');
-    setSelectedCategory('');
+    setSelectedBrand('all');
+    setSelectedCategory('all');
     setMinPrice('');
     setMaxPrice('');
     setSearchParams({});
-  };
-
-  const formatPrice = (price: string) => {
-    const num = parseFloat(price.replace(/\D/g, ''));
-    return num.toLocaleString('pt-BR');
   };
 
   return (
@@ -181,7 +181,7 @@ export default function Search() {
                       <SelectValue placeholder="Categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas</SelectItem>
+                      <SelectItem value="all">Todas</SelectItem>
                       <SelectItem value="carros">Carros</SelectItem>
                       <SelectItem value="motos">Motos</SelectItem>
                     </SelectContent>
@@ -192,7 +192,7 @@ export default function Search() {
                       <SelectValue placeholder="Marca" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas</SelectItem>
+                      <SelectItem value="all">Todas</SelectItem>
                       {selectedCategory === 'carros' ? (
                         carBrands.map(brand => (
                           <SelectItem key={brand} value={brand}>{brand}</SelectItem>
