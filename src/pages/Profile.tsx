@@ -9,9 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Settings, Star, Eye, Phone } from "lucide-react";
+import { User, Settings, Star, Eye, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PlanSelectionModal } from "@/components/PlanSelectionModal";
+import { ProfileImageUpload } from "@/components/ProfileImageUpload";
+import { VerificationBadge } from "@/components/VerificationBadge";
+import { CategoryBadge } from "@/components/CategoryBadge";
 
 interface Profile {
   id: string;
@@ -27,6 +30,8 @@ interface Profile {
   instagram?: string;
   free_ads_used: number;
   paid_ads_balance: number;
+  profile_photo?: string;
+  profile_completed: boolean;
 }
 
 interface City {
@@ -42,6 +47,7 @@ interface UserListing {
   price: number;
   is_active: boolean;
   created_at: string;
+  category: string;
   plans?: {
     plan_type: string;
   };
@@ -147,6 +153,7 @@ export default function Profile() {
           cnpj: profile.cnpj,
           razao_social: profile.razao_social,
           instagram: profile.instagram,
+          profile_photo: profile.profile_photo,
         })
         .eq('user_id', profile.user_id);
 
@@ -167,23 +174,20 @@ export default function Profile() {
     }
   };
 
-  const toggleListingStatus = async (listingId: string, currentStatus: boolean) => {
+  const deleteListing = async (listingId: string) => {
     try {
       const { error } = await supabase
         .from('listings')
-        .update({ is_active: !currentStatus })
+        .delete()
         .eq('id', listingId);
 
       if (error) throw error;
 
-      setListings(prev => prev.map(listing => 
-        listing.id === listingId 
-          ? { ...listing, is_active: !currentStatus }
-          : listing
-      ));
+      setListings(prev => prev.filter(listing => listing.id !== listingId));
 
       toast({
-        title: currentStatus ? "Anúncio pausado" : "Anúncio ativado",
+        title: "Anúncio excluído",
+        description: "O anúncio foi removido com sucesso",
       });
     } catch (error: any) {
       toast({
@@ -219,7 +223,7 @@ export default function Profile() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Perfil não encontrado</h1>
+          <h1 className="text-2xl font-bold mb-4 text-black">Perfil não encontrado</h1>
           <Button onClick={() => navigate('/')}>Voltar ao início</Button>
         </div>
       </div>
@@ -232,11 +236,14 @@ export default function Profile() {
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-[#FFCD44] rounded-full">
-              <User className="w-6 h-6 text-black" />
+            <div className="p-3 bg-blue-600 rounded-full">
+              <User className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-black">Meu Perfil</h1>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-black">Meu Perfil</h1>
+                <VerificationBadge isVerified={profile.profile_completed} />
+              </div>
               <p className="text-muted-foreground">Gerencie suas informações e anúncios</p>
             </div>
           </div>
@@ -245,7 +252,7 @@ export default function Profile() {
           <div className="grid md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-6 text-center">
-                <div className="text-2xl font-bold text-[#FFCD44]">∞</div>
+                <div className="text-2xl font-bold text-blue-600">∞</div>
                 <p className="text-sm text-muted-foreground">Anúncios disponíveis</p>
                 <p className="text-xs text-green-600">Ilimitado e gratuito!</p>
               </CardContent>
@@ -278,6 +285,11 @@ export default function Profile() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <ProfileImageUpload
+                  currentImage={profile.profile_photo}
+                  onImageChange={(imageUrl) => setProfile({ ...profile, profile_photo: imageUrl })}
+                />
+                
                 <div className="space-y-2">
                   <Label htmlFor="full_name" className="text-black">
                     {profile.user_type === 'pj' ? 'Razão Social' : 'Nome Completo'}
@@ -378,7 +390,7 @@ export default function Profile() {
                 <Button 
                   onClick={saveProfile} 
                   disabled={saving}
-                  className="w-full bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
                 >
                   {saving ? "Salvando..." : "Salvar Alterações"}
                 </Button>
@@ -393,14 +405,14 @@ export default function Profile() {
                   Meus Anúncios
                 </CardTitle>
                 <CardDescription>
-                  Gerencie seus anúncios ativos e inativos
+                  Gerencie seus anúncios ativos
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <Button 
                     onClick={() => navigate('/create-listing')}
-                    className="w-full bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
+                    className="w-full bg-blue-600 text-white hover:bg-blue-700"
                   >
                     Criar Novo Anúncio
                   </Button>
@@ -421,21 +433,22 @@ export default function Profile() {
                                 {listing.title}
                               </h4>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{formatPrice(listing.price)}</span>
+                                <span className="text-black">{formatPrice(listing.price)}</span>
                                 <span>•</span>
                                 <span>{new Date(listing.created_at).toLocaleDateString('pt-BR')}</span>
                               </div>
-                              {listing.plans && (
-                                <Badge variant="secondary" className="mt-1 text-xs">
-                                  Plano {listing.plans.plan_type}
-                                </Badge>
-                              )}
+                              <div className="flex items-center gap-2 mt-1">
+                                <CategoryBadge 
+                                  category={listing.category} 
+                                  planType={listing.plans?.plan_type} 
+                                />
+                              </div>
                             </div>
                             <Badge 
                               variant={listing.is_active ? "default" : "secondary"}
                               className="text-xs"
                             >
-                              {listing.is_active ? "Ativo" : "Pausado"}
+                              {listing.is_active ? "Ativo" : "Inativo"}
                             </Badge>
                           </div>
                           
@@ -452,10 +465,11 @@ export default function Profile() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => toggleListingStatus(listing.id, listing.is_active)}
-                              className="flex-1 text-xs"
+                              onClick={() => deleteListing(listing.id)}
+                              className="flex-1 text-xs text-red-600 hover:text-red-700"
                             >
-                              {listing.is_active ? "Pausar" : "Ativar"}
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Excluir
                             </Button>
                           </div>
                         </div>
@@ -478,7 +492,7 @@ export default function Profile() {
             <CardContent>
               <Button 
                 onClick={() => setShowPlanModal(true)}
-                className="bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
+                className="bg-blue-600 text-white hover:bg-blue-700"
               >
                 <Star className="w-4 h-4 mr-2" />
                 Ver Planos de Destaque
@@ -495,7 +509,6 @@ export default function Profile() {
           user={user}
           onPlanSelected={() => {
             setShowPlanModal(false);
-            // Refresh listings to show updated plan status
             fetchListings(user.id);
           }}
         />

@@ -1,12 +1,14 @@
-
 import { useState, useEffect } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Calendar, Gauge, Phone, MessageCircle, Eye, Star, Shield, Zap } from "lucide-react";
+import { Heart, MapPin, Calendar, Gauge, Phone, MessageCircle, Eye, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ImageCarousel } from "@/components/ImageCarousel";
+import { CategoryBadge } from "@/components/CategoryBadge";
+import { VerificationBadge } from "@/components/VerificationBadge";
 
 interface ListingDetail {
   id: string;
@@ -19,6 +21,7 @@ interface ListingDetail {
   mileage?: number;
   color?: string;
   images: string[];
+  category: string;
   city: {
     name: string;
     state: string;
@@ -28,10 +31,13 @@ interface ListingDetail {
   is_featured: boolean;
   plan_id?: string;
   profiles: {
+    id: string;
     full_name: string;
     phone_display?: string;
     user_type?: string;
     razao_social?: string;
+    profile_photo?: string;
+    profile_completed?: boolean;
   };
   plans?: {
     plan_type: string;
@@ -40,6 +46,7 @@ interface ListingDetail {
 
 export default function ListingDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -60,7 +67,7 @@ export default function ListingDetail() {
         .select(`
           *,
           city:cities(name, state, zip_code),
-          profiles(full_name, phone_display, user_type, razao_social),
+          profiles(id, full_name, phone_display, user_type, razao_social, profile_photo, profile_completed),
           plans(plan_type)
         `)
         .eq('id', id)
@@ -185,18 +192,18 @@ export default function ListingDetail() {
     return `${mileage.toLocaleString('pt-BR')} km`;
   };
 
-  const getPlanIcon = (planType?: string) => {
-    switch (planType) {
-      case 'prata': return <Star className="w-4 h-4 text-gray-500" />;
-      case 'ouro': return <Shield className="w-4 h-4 text-yellow-500" />;
-      case 'diamante': return <Zap className="w-4 h-4 text-blue-500" />;
-      default: return null;
-    }
-  };
-
   const formatPhoneForWhatsApp = (phone?: string) => {
     if (!phone) return '';
     return phone.replace(/\D/g, '');
+  };
+
+  const viewSellerProfile = (sellerId: string) => {
+    // For now, we'll show seller info in the current page
+    // In a real app, you might navigate to a seller profile page
+    toast({
+      title: "Informações do Vendedor",
+      description: "Funcionalidade de perfil do vendedor em desenvolvimento",
+    });
   };
 
   if (loading) {
@@ -223,18 +230,13 @@ export default function ListingDetail() {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Images */}
           <div className="space-y-4">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
-              {listing.images?.[currentImageIndex] ? (
-                <img
-                  src={listing.images[currentImageIndex]}
-                  alt={listing.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-muted flex items-center justify-center">
-                  <span className="text-muted-foreground">Sem imagem</span>
-                </div>
-              )}
+            <div className="relative">
+              <ImageCarousel
+                images={listing.images || []}
+                title={listing.title}
+                currentImageIndex={currentImageIndex}
+                onIndexChange={setCurrentImageIndex}
+              />
               
               <Button
                 size="icon"
@@ -247,47 +249,25 @@ export default function ListingDetail() {
               
               {listing.plans && (
                 <div className="absolute top-2 left-2">
-                  <Badge className="bg-[#FFCD44] text-black">
-                    {getPlanIcon(listing.plans.plan_type)}
-                    <span className="ml-1 capitalize">{listing.plans.plan_type}</span>
-                  </Badge>
+                  <CategoryBadge planType={listing.plans.plan_type} />
                 </div>
               )}
             </div>
-            
-            {listing.images && listing.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {listing.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                      index === currentImageIndex ? 'border-[#FFCD44]' : 'border-transparent'
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${listing.title} - ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Details */}
           <div className="space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
+                <CategoryBadge category={listing.category} />
                 <Badge variant="secondary" className="text-xs">
                   {listing.brand} {listing.model}
                 </Badge>
                 <span className="text-sm text-muted-foreground">{listing.year}</span>
               </div>
               
-              <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
-              <div className="text-4xl font-bold text-[#FFCD44] mb-4">
+              <h1 className="text-3xl font-bold mb-2 text-black">{listing.title}</h1>
+              <div className="text-4xl font-bold text-black mb-4">
                 {formatPrice(listing.price)}
               </div>
             </div>
@@ -295,7 +275,7 @@ export default function ListingDetail() {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-black">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
                     <div>
                       <div>{listing.city.name}, {listing.city.state}</div>
@@ -306,20 +286,20 @@ export default function ListingDetail() {
                   </div>
                   
                   {listing.mileage && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-black">
                       <Gauge className="w-4 h-4 text-muted-foreground" />
                       <span>{formatMileage(listing.mileage)}</span>
                     </div>
                   )}
                   
                   {listing.color && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-black">
                       <div className="w-4 h-4 rounded-full border" style={{backgroundColor: listing.color.toLowerCase()}}></div>
                       <span>{listing.color}</span>
                     </div>
                   )}
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-black">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <span>{new Date(listing.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
@@ -330,45 +310,76 @@ export default function ListingDetail() {
             {/* Contact Info */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Vendedor</h3>
-                <div className="space-y-2">
-                  <div className="font-medium">
-                    {listing.profiles.user_type === 'pj' 
-                      ? listing.profiles.razao_social 
-                      : listing.profiles.full_name}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-black">Vendedor</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => viewSellerProfile(listing.profiles.id)}
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Ver Perfil
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+                    {listing.profiles.profile_photo ? (
+                      <img
+                        src={listing.profiles.profile_photo}
+                        alt="Foto do vendedor"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-6 h-6 text-muted-foreground" />
+                    )}
                   </div>
                   
-                  {listing.profiles.phone_display && (
-                    <div className="flex gap-2">
-                      <Button
-                        className="flex-1 bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
-                        onClick={handleContactClick}
-                      >
-                        <Phone className="w-4 h-4 mr-2" />
-                        {listing.profiles.phone_display}
-                      </Button>
-                      
-                      <Button
-                        size="icon"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => {
-                          handleContactClick();
-                          window.open(`https://wa.me/55${formatPhoneForWhatsApp(listing.profiles.phone_display)}`, '_blank');
-                        }}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </Button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-black">
+                        {listing.profiles.user_type === 'pj' 
+                          ? listing.profiles.razao_social 
+                          : listing.profiles.full_name}
+                      </div>
+                      <VerificationBadge isVerified={listing.profiles.profile_completed || false} />
                     </div>
-                  )}
+                  </div>
                 </div>
+                
+                {listing.profiles.phone_display && (
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={() => {
+                        handleContactClick();
+                        window.location.href = `tel:${listing.profiles.phone_display}`;
+                      }}
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      {listing.profiles.phone_display}
+                    </Button>
+                    
+                    <Button
+                      size="icon"
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        handleContactClick();
+                        window.open(`https://wa.me/55${formatPhoneForWhatsApp(listing.profiles.phone_display)}`, '_blank');
+                      }}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Description */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Descrição</h3>
-                <p className="whitespace-pre-wrap">{listing.description}</p>
+                <h3 className="font-semibold mb-4 text-black">Descrição</h3>
+                <p className="whitespace-pre-wrap text-black">{listing.description}</p>
               </CardContent>
             </Card>
           </div>

@@ -76,6 +76,7 @@ export type Database = {
       listings: {
         Row: {
           brand: string
+          category: string | null
           city_id: string
           color: string | null
           created_at: string
@@ -96,6 +97,7 @@ export type Database = {
         }
         Insert: {
           brand: string
+          category?: string | null
           city_id: string
           color?: string | null
           created_at?: string
@@ -116,6 +118,7 @@ export type Database = {
         }
         Update: {
           brand?: string
+          category?: string | null
           city_id?: string
           color?: string | null
           created_at?: string
@@ -205,6 +208,8 @@ export type Database = {
           paid_ads_balance: number | null
           phone: string | null
           phone_display: string | null
+          profile_completed: boolean | null
+          profile_photo: string | null
           razao_social: string | null
           updated_at: string
           user_id: string
@@ -224,6 +229,8 @@ export type Database = {
           paid_ads_balance?: number | null
           phone?: string | null
           phone_display?: string | null
+          profile_completed?: boolean | null
+          profile_photo?: string | null
           razao_social?: string | null
           updated_at?: string
           user_id: string
@@ -243,6 +250,8 @@ export type Database = {
           paid_ads_balance?: number | null
           phone?: string | null
           phone_display?: string | null
+          profile_completed?: boolean | null
+          profile_photo?: string | null
           razao_social?: string | null
           updated_at?: string
           user_id?: string
