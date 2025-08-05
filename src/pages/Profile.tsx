@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -242,7 +241,7 @@ export default function Profile() {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-bold text-black">Meu Perfil</h1>
+                <h1 className="text-3xl font-bold text-black">Olá, {profile.full_name}!</h1>
                 <VerificationBadge isVerified={profile.profile_completed} />
               </div>
               <p className="text-muted-foreground">Gerencie suas informações e anúncios</p>
@@ -391,7 +390,7 @@ export default function Profile() {
                 <Button 
                   onClick={saveProfile} 
                   disabled={saving}
-                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                  className="w-full bg-[#FFCD44] hover:bg-[#FFD700] text-black"
                 >
                   {saving ? "Salvando..." : "Salvar Alterações"}
                 </Button>
@@ -413,7 +412,7 @@ export default function Profile() {
                 <div className="space-y-4">
                   <Button 
                     onClick={() => navigate('/create-listing')}
-                    className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                    className="w-full bg-[#FFCD44] hover:bg-[#FFD700] text-black"
                   >
                     Criar Novo Anúncio
                   </Button>

@@ -47,13 +47,19 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
       }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/profile-${Date.now()}.${fileExt}`;
+      const fileName = `profile-${user.id}-${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
         .from('images')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Storage error:', error);
+        throw error;
+      }
 
       const { data: urlData } = supabase.storage
         .from('images')
@@ -69,7 +75,7 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
       console.error('Upload error:', error);
       toast({
         title: "Erro",
-        description: "Erro ao fazer upload da imagem",
+        description: "Erro ao fazer upload da imagem: " + error.message,
         variant: "destructive",
       });
     } finally {
@@ -94,8 +100,9 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
         <label htmlFor="profile-image" className="absolute -bottom-2 -right-2">
           <Button
             size="sm"
-            className="rounded-full w-8 h-8 p-0"
+            className="rounded-full w-8 h-8 p-0 bg-[#FFCD44] hover:bg-[#FFD700] text-black"
             disabled={uploading}
+            type="button"
           >
             <Upload className="w-4 h-4" />
           </Button>
@@ -109,7 +116,7 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
         </label>
       </div>
       <p className="text-xs text-muted-foreground text-center">
-        Clique no botão para adicionar uma foto de perfil
+        {uploading ? "Enviando..." : "Clique no botão para adicionar uma foto de perfil"}
       </p>
     </div>
   );

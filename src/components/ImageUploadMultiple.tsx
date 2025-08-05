@@ -52,13 +52,19 @@ export function ImageUploadMultiple({
         }
 
         const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/listing-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `listing-${user.id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
         const { data, error } = await supabase.storage
           .from('images')
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Storage error:', error);
+          throw error;
+        }
 
         const { data: urlData } = supabase.storage
           .from('images')
@@ -84,6 +90,9 @@ export function ImageUploadMultiple({
     } finally {
       setUploading(false);
     }
+
+    // Clear the input
+    event.target.value = '';
   };
 
   const removeImage = (index: number) => {

@@ -1,30 +1,39 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Calendar, Gauge } from "lucide-react";
+import { Eye, Heart, MapPin, Calendar } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { FeaturedBadge } from "./FeaturedBadge";
 
-interface ListingCardProps {
-  listing: {
-    id: string;
-    title: string;
-    description: string;
-    price: number;
-    brand: string;
-    model: string;
-    year: number;
-    mileage?: number;
-    color?: string;
-    images: string[];
-    city: {
-      name: string;
-      state: string;
-    };
-    created_at: string;
+interface Listing {
+  id: string;
+  title: string;
+  price: number;
+  brand: string;
+  model: string;
+  year: number;
+  mileage?: number;
+  images: string[];
+  category: string;
+  city: {
+    name: string;
+    state: string;
+  };
+  created_at: string;
+  is_featured: boolean;
+  plans?: {
+    plan_type: string;
   };
 }
 
-export const ListingCard = ({ listing }: ListingCardProps) => {
+interface ListingCardProps {
+  listing: Listing;
+}
+
+export function ListingCard({ listing }: ListingCardProps) {
+  const [imageError, setImageError] = useState(false);
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -34,87 +43,77 @@ export const ListingCard = ({ listing }: ListingCardProps) => {
   };
 
   const formatMileage = (mileage?: number) => {
-    if (!mileage) return "Não informado";
-    return `${mileage.toLocaleString('pt-BR')} km`;
+    if (!mileage) return null;
+    return new Intl.NumberFormat('pt-BR').format(mileage) + ' km';
+  };
+
+  const getMainImage = () => {
+    if (listing.images && listing.images.length > 0) {
+      return listing.images[0];
+    }
+    return '/placeholder.svg';
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-      <Link to={`/listing/${listing.id}`}>
-        <div className="relative aspect-[4/3] overflow-hidden">
-          {listing.images?.[0] ? (
+    <Link to={`/listing/${listing.id}`}>
+      <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden">
+        <div className="relative">
+          <div className="aspect-video overflow-hidden">
             <img
-              src={listing.images[0]}
+              src={imageError ? '/placeholder.svg' : getMainImage()}
               alt={listing.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={() => setImageError(true)}
             />
-          ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">
-              <span className="text-muted-foreground">Sem imagem</span>
-            </div>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="absolute top-2 right-2 bg-background/80 hover:bg-background"
-            onClick={(e) => {
-              e.preventDefault();
-              // TODO: Add to favorites functionality
-            }}
-          >
-            <Heart className="w-4 h-4" />
-          </Button>
+          </div>
+          
+          <FeaturedBadge planType={listing.plans?.plan_type} />
+
+          <div className="absolute top-2 right-2 flex gap-1">
+            <Badge variant="secondary" className="text-xs bg-black/50 text-white">
+              <Eye className="w-3 h-3 mr-1" />
+              Ver
+            </Badge>
+          </div>
         </div>
-      </Link>
-      
-      <CardContent className="p-4">
-        <Link to={`/listing/${listing.id}`}>
-          <div className="space-y-3">
-            <div>
-              <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
-                {listing.title}
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary" className="text-xs">
-                  {listing.brand} {listing.model}
-                </Badge>
-                <span className="text-sm text-muted-foreground">{listing.year}</span>
-              </div>
-            </div>
+
+        <CardContent className="p-4">
+          <div className="space-y-2">
+            <h3 className="font-semibold text-lg line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+              {listing.title}
+            </h3>
             
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-primary">
+                {formatPrice(listing.price)}
+              </span>
+              <Badge variant="outline" className="text-xs">
+                {listing.year}
+              </Badge>
+            </div>
+
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>{listing.brand} {listing.model}</p>
+              {listing.mileage && (
+                <p className="flex items-center gap-1">
+                  {formatMileage(listing.mileage)}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
               <div className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
                 <span>{listing.city.name}, {listing.city.state}</span>
               </div>
-              
-              {listing.mileage && (
-                <div className="flex items-center gap-1">
-                  <Gauge className="w-3 h-3" />
-                  <span>{formatMileage(listing.mileage)}</span>
-                </div>
-              )}
-            </div>
-            
-            {listing.color && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Cor:</span>
-                <span className="text-sm font-medium">{listing.color}</span>
-              </div>
-            )}
-            
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold text-primary">
-                {formatPrice(listing.price)}
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
                 <span>{new Date(listing.created_at).toLocaleDateString('pt-BR')}</span>
               </div>
             </div>
           </div>
-        </Link>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   );
-};
+}

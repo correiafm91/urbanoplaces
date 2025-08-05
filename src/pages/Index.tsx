@@ -27,6 +27,9 @@ interface Listing {
   created_at: string;
   is_active: boolean;
   is_featured: boolean;
+  plans?: {
+    plan_type: string;
+  };
 }
 
 interface CategoryStats {
@@ -39,11 +42,13 @@ export default function Index() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [listings, setListings] = useState<Listing[]>([]);
+  const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchListings();
+    fetchFeaturedListings();
     fetchCategoryStats();
   }, []);
 
@@ -66,9 +71,11 @@ export default function Index() {
           created_at,
           is_active,
           is_featured,
-          city:cities(name, state)
+          city:cities(name, state),
+          plans(plan_type)
         `)
         .eq('is_active', true)
+        .is('plan_id', null)
         .order('created_at', { ascending: false })
         .limit(12);
 
@@ -78,6 +85,40 @@ export default function Index() {
       console.error('Error fetching listings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFeaturedListings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('listings')
+        .select(`
+          id,
+          title,
+          description,
+          price,
+          brand,
+          model,
+          year,
+          mileage,
+          color,
+          images,
+          category,
+          created_at,
+          is_active,
+          is_featured,
+          city:cities(name, state),
+          plans(plan_type)
+        `)
+        .eq('is_active', true)
+        .not('plan_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+      setFeaturedListings(data || []);
+    } catch (error) {
+      console.error('Error fetching featured listings:', error);
     }
   };
 
@@ -166,7 +207,7 @@ export default function Index() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
             />
-            <Button type="submit">
+            <Button type="submit" className="bg-[#FFCD44] hover:bg-[#FFD700] text-black">
               <Search className="w-4 h-4 mr-2" />
               Buscar
             </Button>
@@ -200,7 +241,6 @@ export default function Index() {
                       {stat.count} anúncios
                     </Badge>
                     
-                    {/* Top brands for this category */}
                     <div className="mt-3 space-y-1">
                       {Object.entries(stat.brands)
                         .sort(([,a], [,b]) => b - a)
@@ -218,6 +258,38 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      {/* Featured Listings */}
+      {featuredListings.length > 0 && (
+        <section className="py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold text-foreground">Anúncios em Destaque</h2>
+              <Link to="/search?featured=true">
+                <Button variant="outline">Ver todos em destaque</Button>
+              </Link>
+            </div>
+            
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {[...Array(4)].map((_, index) => (
+                  <div key={index} className="animate-pulse">
+                    <div className="bg-muted rounded-lg h-64 mb-4"></div>
+                    <div className="bg-muted rounded h-4 w-3/4 mb-2"></div>
+                    <div className="bg-muted rounded h-4 w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {featuredListings.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Recent Listings */}
       <section className="py-16 bg-muted/50">
@@ -258,7 +330,12 @@ export default function Index() {
           <p className="text-xl mb-8 opacity-90">
             Anuncie grátis e alcance milhares de compradores interessados
           </p>
-          <Button size="lg" variant="secondary" onClick={() => navigate('/create-listing')}>
+          <Button 
+            size="lg" 
+            variant="secondary" 
+            onClick={() => navigate('/create-listing')}
+            className="bg-[#FFCD44] hover:bg-[#FFD700] text-black"
+          >
             Anunciar Agora
           </Button>
         </div>
