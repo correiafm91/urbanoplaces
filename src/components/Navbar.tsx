@@ -66,7 +66,7 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="text-2xl font-bold text-black">
+            <div className="text-2xl font-bold text-primary">
               Urbano Places
             </div>
           </Link>
@@ -86,7 +86,7 @@ export function Navbar() {
               <Button 
                 type="submit" 
                 size="icon"
-                className="ml-2 bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
+                className="ml-2"
               >
                 <Search className="w-4 h-4" />
               </Button>
@@ -95,10 +95,7 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-4">
-            <Button 
-              asChild
-              className="bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
-            >
+            <Button asChild>
               <Link to="/create-listing">
                 <Plus className="w-4 h-4 mr-2" />
                 Anunciar
@@ -110,13 +107,13 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-[#FFCD44] text-black">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
                         {getUserInitials()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 bg-popover border-border">
                   <DropdownMenuItem asChild>
                     <Link to="/profile">
                       <User className="w-4 h-4 mr-2" />
@@ -130,7 +127,7 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
                     Sair
                   </DropdownMenuItem>
@@ -174,7 +171,6 @@ export function Navbar() {
               <Button 
                 type="submit" 
                 size="icon"
-                className="bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
               >
                 <Search className="w-4 h-4" />
               </Button>
@@ -184,7 +180,7 @@ export function Navbar() {
             <div className="space-y-2">
               <Button 
                 asChild 
-                className="w-full bg-[#FFCD44] text-black hover:bg-[#FFCD44]/90"
+                className="w-full"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <Link to="/create-listing">
@@ -219,7 +215,7 @@ export function Navbar() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="w-full text-red-600"
+                    className="w-full text-destructive"
                     onClick={() => {
                       handleLogout();
                       setIsMobileMenuOpen(false);

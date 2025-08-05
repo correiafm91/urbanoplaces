@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -150,12 +149,12 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-blue-100 py-20">
+      <section className="bg-gradient-to-br from-primary/5 to-primary/10 py-20">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-black">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground">
             Encontre seu veículo dos sonhos
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             A maior plataforma de venda de veículos do Brasil. Anuncie grátis e venda mais rápido!
           </p>
           
@@ -167,7 +166,7 @@ export default function Index() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
             />
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button type="submit">
               <Search className="w-4 h-4 mr-2" />
               Buscar
             </Button>
@@ -178,7 +177,7 @@ export default function Index() {
       {/* Categories Section */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12 text-black">
+          <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
             Categorias
           </h2>
           
@@ -191,10 +190,10 @@ export default function Index() {
               >
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardContent className="p-6 text-center">
-                    <div className="flex justify-center mb-4 text-blue-600">
+                    <div className="flex justify-center mb-4 text-primary">
                       {getCategoryIcon(stat.category)}
                     </div>
-                    <h3 className="font-semibold mb-2 text-black">
+                    <h3 className="font-semibold mb-2 text-foreground">
                       {getCategoryName(stat.category)}
                     </h3>
                     <Badge variant="secondary" className="text-xs">
@@ -207,7 +206,7 @@ export default function Index() {
                         .sort(([,a], [,b]) => b - a)
                         .slice(0, 3)
                         .map(([brand, count]) => (
-                          <div key={brand} className="text-xs text-gray-600">
+                          <div key={brand} className="text-xs text-muted-foreground">
                             {brand}: {count}
                           </div>
                         ))}
@@ -221,10 +220,10 @@ export default function Index() {
       </section>
 
       {/* Recent Listings */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-black">Anúncios Recentes</h2>
+            <h2 className="text-3xl font-bold text-foreground">Anúncios Recentes</h2>
             <Link to="/search">
               <Button variant="outline">Ver todos</Button>
             </Link>
@@ -251,7 +250,7 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-blue-600 text-white">
+      <section className="py-16 bg-primary text-primary-foreground">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">
             Pronto para vender seu veículo?

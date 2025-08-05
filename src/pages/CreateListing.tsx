@@ -214,12 +214,12 @@ export default function CreateListing() {
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-black">Criar Anúncio</CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground">Criar Anúncio</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="title" className="text-black">Título</Label>
+                <Label htmlFor="title" className="text-foreground">Título</Label>
                 <Input
                   type="text"
                   id="title"
@@ -229,7 +229,7 @@ export default function CreateListing() {
               </div>
 
               <div>
-                <Label htmlFor="description" className="text-black">Descrição</Label>
+                <Label htmlFor="description" className="text-foreground">Descrição</Label>
                 <Textarea
                   id="description"
                   value={description}
@@ -238,7 +238,7 @@ export default function CreateListing() {
               </div>
 
               <div>
-                <Label htmlFor="price" className="text-black">Preço</Label>
+                <Label htmlFor="price" className="text-foreground">Preço</Label>
                 <Input
                   type="number"
                   id="price"
@@ -249,7 +249,7 @@ export default function CreateListing() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="brand" className="text-black">Marca</Label>
+                  <Label htmlFor="brand" className="text-foreground">Marca</Label>
                   <Input
                     type="text"
                     id="brand"
@@ -259,7 +259,7 @@ export default function CreateListing() {
                 </div>
 
                 <div>
-                  <Label htmlFor="model" className="text-black">Modelo</Label>
+                  <Label htmlFor="model" className="text-foreground">Modelo</Label>
                   <Input
                     type="text"
                     id="model"
@@ -271,7 +271,7 @@ export default function CreateListing() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="year" className="text-black">Ano</Label>
+                  <Label htmlFor="year" className="text-foreground">Ano</Label>
                   <Input
                     type="number"
                     id="year"
@@ -281,7 +281,7 @@ export default function CreateListing() {
                 </div>
 
                 <div>
-                  <Label htmlFor="mileage" className="text-black">
+                  <Label htmlFor="mileage" className="text-foreground">
                     Quilometragem (opcional)
                   </Label>
                   <Input
@@ -294,7 +294,7 @@ export default function CreateListing() {
               </div>
 
               <div>
-                <Label htmlFor="color" className="text-black">Cor (opcional)</Label>
+                <Label htmlFor="color" className="text-foreground">Cor (opcional)</Label>
                 <Input
                   type="text"
                   id="color"
@@ -304,7 +304,7 @@ export default function CreateListing() {
               </div>
 
               <div>
-                <Label htmlFor="city" className="text-black">Cidade</Label>
+                <Label htmlFor="city" className="text-foreground">Cidade</Label>
                 <Select
                   value={cityId}
                   onValueChange={(value) => setCityId(value)}
@@ -324,7 +324,7 @@ export default function CreateListing() {
               </div>
 
               <div>
-                <Label htmlFor="category" className="text-black">Categoria</Label>
+                <Label htmlFor="category" className="text-foreground">Categoria</Label>
                 <Select
                   value={categoryId}
                   onValueChange={(value) => setCategoryId(value)}
@@ -343,7 +343,7 @@ export default function CreateListing() {
               </div>
 
               <div>
-                <Label className="text-black">Imagens</Label>
+                <Label className="text-foreground">Imagens</Label>
                 <div className="flex items-center space-x-4">
                   <input
                     type="file"
@@ -353,7 +353,7 @@ export default function CreateListing() {
                     onChange={uploadImage}
                     className="hidden"
                   />
-                  <Label htmlFor="image" className="bg-blue-600 text-white py-2 px-4 rounded-md cursor-pointer hover:bg-blue-700">
+                  <Label htmlFor="image" className="bg-primary text-primary-foreground py-2 px-4 rounded-md cursor-pointer hover:bg-primary/90">
                     <Upload className="w-4 h-4 mr-2 inline-block" />
                     {uploading ? 'Enviando...' : 'Selecionar Imagens'}
                   </Label>
@@ -378,7 +378,7 @@ export default function CreateListing() {
               </div>
 
               <div>
-                <Label htmlFor="isFeatured" className="text-black">Destaque</Label>
+                <Label htmlFor="isFeatured" className="text-foreground">Destaque</Label>
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="isFeatured"
@@ -396,7 +396,7 @@ export default function CreateListing() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700">
+              <Button type="submit" className="w-full">
                 Criar Anúncio
               </Button>
             </form>
