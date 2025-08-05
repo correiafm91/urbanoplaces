@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { PlanSelectionModal } from "@/components/PlanSelectionModal";
+import { ListingSelectionModal } from "@/components/ListingSelectionModal";
 
 interface City {
   id: string;
@@ -46,6 +47,8 @@ export default function CreateListing() {
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showListingModal, setShowListingModal] = useState(false);
+  const [selectedListingForPlan, setSelectedListingForPlan] = useState<string>("");
 
   useEffect(() => {
     checkAuth();
@@ -199,7 +202,12 @@ export default function CreateListing() {
         description: "Seu anúncio foi criado com sucesso",
       });
 
-      navigate(`/listing/${data.id}`);
+      if (isFeatured) {
+        setSelectedListingForPlan(data.id);
+        setShowPlanModal(true);
+      } else {
+        navigate(`/listing/${data.id}`);
+      }
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -207,6 +215,19 @@ export default function CreateListing() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleFeatureToggle = (checked: boolean) => {
+    setIsFeatured(checked);
+    if (checked) {
+      setShowListingModal(true);
+    }
+  };
+
+  const handleListingSelected = (listingId: string) => {
+    setSelectedListingForPlan(listingId);
+    setShowListingModal(false);
+    setShowPlanModal(true);
   };
 
   return (
@@ -383,12 +404,7 @@ export default function CreateListing() {
                   <Switch
                     id="isFeatured"
                     checked={isFeatured}
-                    onCheckedChange={(checked) => {
-                      setIsFeatured(checked);
-                      if (checked) {
-                        setShowPlanModal(true);
-                      }
-                    }}
+                    onCheckedChange={handleFeatureToggle}
                   />
                   <p className="text-sm text-muted-foreground">
                     Destaque seu anúncio para aumentar a visibilidade
@@ -396,7 +412,7 @@ export default function CreateListing() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                 Criar Anúncio
               </Button>
             </form>
@@ -404,12 +420,33 @@ export default function CreateListing() {
         </Card>
       </div>
 
+      {showListingModal && user && (
+        <ListingSelectionModal
+          isOpen={showListingModal}
+          onClose={() => {
+            setShowListingModal(false);
+            setIsFeatured(false);
+          }}
+          onListingSelected={handleListingSelected}
+          user={user}
+        />
+      )}
+
       {showPlanModal && user && (
         <PlanSelectionModal
           isOpen={showPlanModal}
-          onClose={() => setShowPlanModal(false)}
+          onClose={() => {
+            setShowPlanModal(false);
+            setIsFeatured(false);
+          }}
           user={user}
-          onPlanSelected={() => setShowPlanModal(false)}
+          onPlanSelected={() => {
+            setShowPlanModal(false);
+            if (selectedListingForPlan) {
+              navigate(`/listing/${selectedListingForPlan}`);
+            }
+          }}
+          listingId={selectedListingForPlan}
         />
       )}
     </div>
