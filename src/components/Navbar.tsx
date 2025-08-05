@@ -2,15 +2,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Search, Plus, User, Heart, Settings, LogOut, Menu, X } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Search, Menu, Plus, User, Heart, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -18,32 +11,22 @@ import { useToast } from "@/hooks/use-toast";
 export function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    checkUser();
+    checkAuth();
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkUser = async () => {
+  const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
-      setSearchTerm("");
-      setIsMobileMenuOpen(false);
-    }
   };
 
   const handleLogout = async () => {
@@ -55,192 +38,144 @@ export function Navbar() {
     navigate('/');
   };
 
-  const getUserInitials = () => {
-    if (!user?.email) return "U";
-    return user.email.charAt(0).toUpperCase();
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+    }
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="text-2xl font-bold text-primary">
-              Urbano Places
-            </div>
+          <Link to="/" className="flex items-center gap-2">
+            <img 
+              src="https://i.postimg.cc/xCbz6ytv/527344028-17864364663436451-5206396057599045467-n.jpg" 
+              alt="Logo"
+              className="w-8 h-8 rounded-full object-cover"
+            />
           </Link>
 
-          {/* Desktop Search */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
-            <form onSubmit={handleSearch} className="flex w-full">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar veículos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                size="icon"
-                className="ml-2"
-              >
-                <Search className="w-4 h-4" />
-              </Button>
-            </form>
-          </div>
+          {/* Search Bar - Desktop */}
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-8">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Buscar carros, motos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </form>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4">
-            <Button asChild>
-              <Link to="/create-listing">
-                <Plus className="w-4 h-4 mr-2" />
-                Anunciar
-              </Link>
-            </Button>
-
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center gap-3">
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        {getUserInitials()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-popover border-border">
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile">
-                      <User className="w-4 h-4 mr-2" />
-                      Meu Perfil
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/saved-listings">
-                      <Heart className="w-4 h-4 mr-2" />
-                      Salvos
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sair
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <>
+                <Button asChild>
+                  <Link to="/create-listing">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Anunciar
+                  </Link>
+                </Button>
+                
+                <Button variant="ghost" size="icon" asChild>
+                  <Link to="/saved-listings">
+                    <Heart className="w-4 h-4" />
+                  </Link>
+                </Button>
+                
+                <Button variant="ghost" size="icon" asChild>
+                  <Link to="/profile">
+                    <User className="w-4 h-4" />
+                  </Link>
+                </Button>
+                
+                <Button variant="ghost" size="icon" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </>
             ) : (
-              <Button asChild variant="outline">
-                <Link to="/auth">
-                  <User className="w-4 h-4 mr-2" />
-                  Entrar
-                </Link>
-              </Button>
+              <>
+                <Button variant="outline" asChild>
+                  <Link to="/auth">Entrar</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/auth">Cadastrar</Link>
+                </Button>
+              </>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
-        </div>
+          {/* Mobile Menu */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="w-5 h-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-80">
+              <div className="flex flex-col gap-4 mt-6">
+                {/* Mobile Search */}
+                <form onSubmit={handleSearch}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar carros, motos..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </form>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden py-4 space-y-4 border-t">
-            {/* Mobile Search */}
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar veículos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+                {user ? (
+                  <>
+                    <Button asChild className="justify-start">
+                      <Link to="/create-listing">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Anunciar
+                      </Link>
+                    </Button>
+                    
+                    <Button variant="ghost" asChild className="justify-start">
+                      <Link to="/saved-listings">
+                        <Heart className="w-4 h-4 mr-2" />
+                        Favoritos
+                      </Link>
+                    </Button>
+                    
+                    <Button variant="ghost" asChild className="justify-start">
+                      <Link to="/profile">
+                        <User className="w-4 h-4 mr-2" />
+                        Perfil
+                      </Link>
+                    </Button>
+                    
+                    <Button variant="ghost" onClick={handleLogout} className="justify-start">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sair
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" asChild>
+                      <Link to="/auth">Entrar</Link>
+                    </Button>
+                    <Button asChild>
+                      <Link to="/auth">Cadastrar</Link>
+                    </Button>
+                  </>
+                )}
               </div>
-              <Button 
-                type="submit" 
-                size="icon"
-              >
-                <Search className="w-4 h-4" />
-              </Button>
-            </form>
-
-            {/* Mobile Navigation Links */}
-            <div className="space-y-2">
-              <Button 
-                asChild 
-                className="w-full"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Link to="/create-listing">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Anunciar
-                </Link>
-              </Button>
-
-              {user ? (
-                <>
-                  <Button 
-                    asChild 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Link to="/profile">
-                      <User className="w-4 h-4 mr-2" />
-                      Meu Perfil
-                    </Link>
-                  </Button>
-                  <Button 
-                    asChild 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Link to="/saved-listings">
-                      <Heart className="w-4 h-4 mr-2" />
-                      Salvos
-                    </Link>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full text-destructive"
-                    onClick={() => {
-                      handleLogout();
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sair
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  asChild 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Link to="/auth">
-                    <User className="w-4 h-4 mr-2" />
-                    Entrar
-                  </Link>
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </nav>
   );

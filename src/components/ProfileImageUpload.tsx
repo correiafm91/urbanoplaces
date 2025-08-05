@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Camera, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProfileImageUploadProps {
   currentImage?: string;
@@ -40,16 +41,32 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
 
     setUploading(true);
     try {
-      // For now, we'll create a mock URL. In a real implementation, 
-      // you would upload to a storage service like Supabase Storage
-      const mockImageUrl = URL.createObjectURL(file);
-      onImageChange(mockImageUrl);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/profile-${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(data.path);
+
+      onImageChange(urlData.publicUrl);
       
       toast({
         title: "Sucesso",
         description: "Foto de perfil atualizada",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
         title: "Erro",
         description: "Erro ao fazer upload da imagem",
@@ -77,7 +94,7 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
         <label htmlFor="profile-image" className="absolute -bottom-2 -right-2">
           <Button
             size="sm"
-            className="rounded-full w-8 h-8 p-0 bg-blue-600 hover:bg-blue-700"
+            className="rounded-full w-8 h-8 p-0"
             disabled={uploading}
           >
             <Upload className="w-4 h-4" />

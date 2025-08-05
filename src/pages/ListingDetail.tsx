@@ -67,14 +67,18 @@ export default function ListingDetail() {
         .select(`
           *,
           city:cities(name, state, zip_code),
-          profiles(id, full_name, phone_display, user_type, razao_social, profile_photo, profile_completed),
+          profiles!inner(id, full_name, phone_display, user_type, razao_social, profile_photo, profile_completed),
           plans(plan_type)
         `)
         .eq('id', id)
         .eq('is_active', true)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching listing:', error);
+        throw error;
+      }
+      
       setListing(data);
 
       // Check if user has favorited this listing
@@ -103,18 +107,28 @@ export default function ListingDetail() {
 
   const incrementViews = async () => {
     try {
-      // Insert or update view count
-      const { error } = await supabase
+      const { data: existingDetails } = await supabase
         .from('listing_details')
-        .upsert({
-          listing_id: id,
-          views_count: 1
-        }, {
-          onConflict: 'listing_id',
-          ignoreDuplicates: false
-        });
+        .select('views_count')
+        .eq('listing_id', id)
+        .single();
 
-      if (error) console.error('Error updating views:', error);
+      if (existingDetails) {
+        await supabase
+          .from('listing_details')
+          .update({ 
+            views_count: (existingDetails.views_count || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('listing_id', id);
+      } else {
+        await supabase
+          .from('listing_details')
+          .insert({
+            listing_id: id,
+            views_count: 1
+          });
+      }
     } catch (error) {
       console.error('Error incrementing views:', error);
     }
@@ -165,15 +179,28 @@ export default function ListingDetail() {
 
   const handleContactClick = async () => {
     try {
-      await supabase
+      const { data: existingDetails } = await supabase
         .from('listing_details')
-        .upsert({
-          listing_id: id,
-          contact_clicks: 1
-        }, {
-          onConflict: 'listing_id',
-          ignoreDuplicates: false
-        });
+        .select('contact_clicks')
+        .eq('listing_id', id)
+        .single();
+
+      if (existingDetails) {
+        await supabase
+          .from('listing_details')
+          .update({ 
+            contact_clicks: (existingDetails.contact_clicks || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('listing_id', id);
+      } else {
+        await supabase
+          .from('listing_details')
+          .insert({
+            listing_id: id,
+            contact_clicks: 1
+          });
+      }
     } catch (error) {
       console.error('Error updating contact clicks:', error);
     }
@@ -198,8 +225,6 @@ export default function ListingDetail() {
   };
 
   const viewSellerProfile = (sellerId: string) => {
-    // For now, we'll show seller info in the current page
-    // In a real app, you might navigate to a seller profile page
     toast({
       title: "Informações do Vendedor",
       description: "Funcionalidade de perfil do vendedor em desenvolvimento",
@@ -266,8 +291,8 @@ export default function ListingDetail() {
                 <span className="text-sm text-muted-foreground">{listing.year}</span>
               </div>
               
-              <h1 className="text-3xl font-bold mb-2 text-black">{listing.title}</h1>
-              <div className="text-4xl font-bold text-black mb-4">
+              <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
+              <div className="text-4xl font-bold mb-4">
                 {formatPrice(listing.price)}
               </div>
             </div>
@@ -275,7 +300,7 @@ export default function ListingDetail() {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-black">
+                  <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
                     <div>
                       <div>{listing.city.name}, {listing.city.state}</div>
@@ -286,20 +311,20 @@ export default function ListingDetail() {
                   </div>
                   
                   {listing.mileage && (
-                    <div className="flex items-center gap-2 text-black">
+                    <div className="flex items-center gap-2">
                       <Gauge className="w-4 h-4 text-muted-foreground" />
                       <span>{formatMileage(listing.mileage)}</span>
                     </div>
                   )}
                   
                   {listing.color && (
-                    <div className="flex items-center gap-2 text-black">
+                    <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full border" style={{backgroundColor: listing.color.toLowerCase()}}></div>
                       <span>{listing.color}</span>
                     </div>
                   )}
                   
-                  <div className="flex items-center gap-2 text-black">
+                  <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <span>{new Date(listing.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
@@ -311,7 +336,7 @@ export default function ListingDetail() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-black">Vendedor</h3>
+                  <h3 className="font-semibold">Vendedor</h3>
                   <Button
                     variant="outline"
                     size="sm"
@@ -337,7 +362,7 @@ export default function ListingDetail() {
                   
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <div className="font-medium text-black">
+                      <div className="font-medium">
                         {listing.profiles.user_type === 'pj' 
                           ? listing.profiles.razao_social 
                           : listing.profiles.full_name}
@@ -350,7 +375,7 @@ export default function ListingDetail() {
                 {listing.profiles.phone_display && (
                   <div className="flex gap-2">
                     <Button
-                      className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+                      className="flex-1"
                       onClick={() => {
                         handleContactClick();
                         window.location.href = `tel:${listing.profiles.phone_display}`;
@@ -378,8 +403,8 @@ export default function ListingDetail() {
             {/* Description */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="font-semibold mb-4 text-black">Descrição</h3>
-                <p className="whitespace-pre-wrap text-black">{listing.description}</p>
+                <h3 className="font-semibold mb-4">Descrição</h3>
+                <p className="whitespace-pre-wrap">{listing.description}</p>
               </CardContent>
             </Card>
           </div>

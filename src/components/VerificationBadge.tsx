@@ -11,7 +11,7 @@ export function VerificationBadge({ isVerified, className = "" }: VerificationBa
   if (!isVerified) return null;
 
   return (
-    <Badge className={`bg-green-600 text-white ${className}`}>
+    <Badge className={`bg-green-600 hover:bg-green-700 text-white ${className}`}>
       <CheckCircle className="w-3 h-3 mr-1" />
       Verificado
     </Badge>
