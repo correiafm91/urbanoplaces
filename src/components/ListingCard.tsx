@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, MapPin, Calendar } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { FeaturedBadge } from "./FeaturedBadge";
 
 interface Listing {
   id: string;
@@ -21,10 +20,6 @@ interface Listing {
     state: string;
   };
   created_at: string;
-  is_featured: boolean;
-  plans?: {
-    plan_type: string;
-  };
 }
 
 interface ListingCardProps {
@@ -66,8 +61,6 @@ export function ListingCard({ listing }: ListingCardProps) {
               onError={() => setImageError(true)}
             />
           </div>
-          
-          <FeaturedBadge planType={listing.plans?.plan_type} />
 
           <div className="absolute top-2 right-2 flex gap-1">
             <Badge variant="secondary" className="text-xs bg-black/50 text-white">

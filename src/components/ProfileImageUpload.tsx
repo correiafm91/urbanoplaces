@@ -41,29 +41,35 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
 
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         throw new Error('Usuário não autenticado');
       }
 
       const fileExt = file.name.split('.').pop();
       const fileName = `profile/${user.id}/${Date.now()}.${fileExt}`;
 
-      const { data, error } = await supabase.storage
+      console.log('Uploading file:', fileName);
+
+      const { data, error: uploadError } = await supabase.storage
         .from('images')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
         });
 
-      if (error) {
-        console.error('Storage error:', error);
-        throw error;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error('Erro no upload: ' + uploadError.message);
       }
+
+      console.log('Upload successful:', data);
 
       const { data: urlData } = supabase.storage
         .from('images')
         .getPublicUrl(data.path);
+
+      console.log('Public URL:', urlData.publicUrl);
 
       onImageChange(urlData.publicUrl);
       
@@ -72,7 +78,7 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
         description: "Foto de perfil atualizada",
       });
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error('Complete upload error:', error);
       toast({
         title: "Erro",
         description: "Erro ao fazer upload da imagem: " + error.message,
@@ -80,6 +86,8 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
       });
     } finally {
       setUploading(false);
+      // Clear the input
+      event.target.value = '';
     }
   };
 
@@ -92,6 +100,10 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
               src={currentImage}
               alt="Foto de perfil"
               className="w-full h-full object-cover"
+              onError={(e) => {
+                console.error('Error loading profile image:', currentImage);
+                e.currentTarget.src = '/placeholder.svg';
+              }}
             />
           ) : (
             <Camera className="w-8 h-8 text-muted-foreground" />
@@ -115,6 +127,7 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
             accept="image/*"
             onChange={handleImageUpload}
             className="hidden"
+            disabled={uploading}
           />
         </label>
       </div>

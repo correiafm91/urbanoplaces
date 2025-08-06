@@ -1,24 +1,22 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Search, Car, Bike, Truck, Ship, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ListingCard } from "@/components/ListingCard";
+import { CategoryBadge } from "@/components/CategoryBadge";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Search, Filter, Car, Bike } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Listing {
   id: string;
   title: string;
-  description: string;
   price: number;
   brand: string;
   model: string;
   year: number;
   mileage?: number;
-  color?: string;
   images: string[];
   category: string;
   city: {
@@ -26,310 +24,217 @@ interface Listing {
     state: string;
   };
   created_at: string;
-  is_active: boolean;
-  is_featured: boolean;
-  plans?: {
-    plan_type: string;
-  };
-}
-
-interface CategoryStats {
-  category: string;
-  count: number;
 }
 
 export default function Index() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
   const [listings, setListings] = useState<Listing[]>([]);
-  const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
-  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("todos");
+  const [selectedState, setSelectedState] = useState<string>("todos");
+  const [priceRange, setPriceRange] = useState<string>("todos");
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchListings();
-    fetchFeaturedListings();
-    fetchCategoryStats();
-  }, []);
+  }, [selectedCategory, selectedState, priceRange]);
 
   const fetchListings = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      let query = supabase
         .from('listings')
         .select(`
           id,
           title,
-          description,
           price,
           brand,
           model,
           year,
           mileage,
-          color,
           images,
           category,
-          created_at,
-          is_active,
-          is_featured,
           city:cities(name, state),
-          plans(plan_type)
+          created_at
         `)
         .eq('is_active', true)
-        .is('plan_id', null)
-        .order('created_at', { ascending: false })
-        .limit(12);
+        .order('created_at', { ascending: false });
+
+      if (selectedCategory !== "todos") {
+        query = query.eq('category', selectedCategory);
+      }
+
+      if (selectedState !== "todos") {
+        query = query.eq('cities.state', selectedState);
+      }
+
+      if (priceRange !== "todos") {
+        const [min, max] = priceRange.split('-').map(Number);
+        if (max) {
+          query = query.gte('price', min).lte('price', max);
+        } else {
+          query = query.gte('price', min);
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
+
       setListings(data || []);
-    } catch (error) {
-      console.error('Error fetching listings:', error);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar anúncios",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchFeaturedListings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select(`
-          id,
-          title,
-          description,
-          price,
-          brand,
-          model,
-          year,
-          mileage,
-          color,
-          images,
-          category,
-          created_at,
-          is_active,
-          is_featured,
-          city:cities(name, state),
-          plans(plan_type)
-        `)
-        .eq('is_active', true)
-        .not('plan_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(8);
+  const filteredListings = listings.filter(listing =>
+    listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    listing.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    listing.model.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-      if (error) throw error;
-      setFeaturedListings(data || []);
-    } catch (error) {
-      console.error('Error fetching featured listings:', error);
-    }
-  };
-
-  const fetchCategoryStats = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select('category, brand')
-        .eq('is_active', true);
-
-      if (error) throw error;
-
-      // Process the data to get only category counts (without showing brand details)
-      const stats: { [key: string]: number } = {};
-      
-      data?.forEach(listing => {
-        if (!stats[listing.category]) {
-          stats[listing.category] = 0;
-        }
-        stats[listing.category]++;
-      });
-
-      const categoryStatsArray = Object.entries(stats).map(([category, count]) => ({
-        category,
-        count
-      }));
-
-      setCategoryStats(categoryStatsArray);
-    } catch (error) {
-      console.error('Error fetching category stats:', error);
-    }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
-    }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'carros': return <Car className="w-5 h-5" />;
-      case 'motos': return <Bike className="w-5 h-5" />;
-      case 'vans': return <Truck className="w-5 h-5" />;
-      case 'barcos': return <Ship className="w-5 h-5" />;
-      case 'outros': return <Package className="w-5 h-5" />;
-      default: return <Car className="w-5 h-5" />;
-    }
-  };
-
-  const getCategoryName = (category: string) => {
-    switch (category) {
-      case 'carros': return 'Carros';
-      case 'motos': return 'Motos';
-      case 'vans': return 'Vans';
-      case 'barcos': return 'Barcos';
-      case 'outros': return 'Outros';
-      default: return 'Carros';
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/5 to-primary/10 py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground">
-            Encontre seu veículo dos sonhos
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            A maior plataforma de venda de veículos do Brasil. Anuncie grátis e venda mais rápido!
-          </p>
-          
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex gap-4">
-            <Input
-              type="text"
-              placeholder="Ex: Honda Civic 2020, Ford Ka, Yamaha..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-            <Button 
-              type="submit" 
-              style={{ backgroundColor: '#FFCD44', color: 'black' }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
-            >
-              <Search className="w-4 h-4 mr-2" />
-              Buscar
-            </Button>
-          </form>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
-            Categorias
-          </h2>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {categoryStats.map((stat) => (
-              <Link
-                key={stat.category}
-                to={`/search?category=${stat.category}`}
-                className="group"
-              >
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardContent className="p-6 text-center">
-                    <div className="flex justify-center mb-4 text-primary">
-                      {getCategoryIcon(stat.category)}
-                    </div>
-                    <h3 className="font-semibold mb-2 text-foreground">
-                      {getCategoryName(stat.category)}
-                    </h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {stat.count} anúncios
-                    </Badge>
-                  </CardContent>
-                </Card>
-              </Link>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="bg-muted rounded-lg h-48 mb-4"></div>
+                <div className="bg-muted rounded h-4 w-3/4 mb-2"></div>
+                <div className="bg-muted rounded h-4 w-1/2"></div>
+              </div>
             ))}
           </div>
         </div>
-      </section>
+      </div>
+    );
+  }
 
-      {/* Featured Listings */}
-      {featuredListings.length > 0 && (
-        <section className="py-16 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-3xl font-bold text-foreground">Anúncios em Destaque</h2>
-              <Link to="/search?featured=true">
-                <Button variant="outline">Ver todos em destaque</Button>
-              </Link>
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4">Encontre seu veículo ideal</h1>
+          <p className="text-xl text-muted-foreground">
+            Os melhores carros e motos do Brasil em um só lugar
+          </p>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="bg-card rounded-lg p-6 mb-8 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="lg:col-span-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Buscar por marca, modelo ou título..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
             
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[...Array(4)].map((_, index) => (
-                  <div key={index} className="animate-pulse">
-                    <div className="bg-muted rounded-lg h-64 mb-4"></div>
-                    <div className="bg-muted rounded h-4 w-3/4 mb-2"></div>
-                    <div className="bg-muted rounded h-4 w-1/2"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {featuredListings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas categorias</SelectItem>
+                <SelectItem value="carros">Carros</SelectItem>
+                <SelectItem value="motos">Motos</SelectItem>
+              </SelectContent>
+            </Select>
 
-      {/* Recent Listings */}
-      <section className="py-16 bg-muted/50">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-foreground">Anúncios Recentes</h2>
-            <Link to="/search">
-              <Button variant="outline">Ver todos</Button>
-            </Link>
+            <Select value={selectedState} onValueChange={setSelectedState}>
+              <SelectTrigger>
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos estados</SelectItem>
+                <SelectItem value="SP">São Paulo</SelectItem>
+                <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                <SelectItem value="MG">Minas Gerais</SelectItem>
+                <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={priceRange} onValueChange={setPriceRange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Preço" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos preços</SelectItem>
+                <SelectItem value="0-20000">Até R$ 20.000</SelectItem>
+                <SelectItem value="20000-50000">R$ 20.000 - R$ 50.000</SelectItem>
+                <SelectItem value="50000-100000">R$ 50.000 - R$ 100.000</SelectItem>
+                <SelectItem value="100000">Acima de R$ 100.000</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Category Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+            <div className="flex items-center gap-4">
+              <Car className="w-8 h-8" />
+              <div>
+                <h3 className="text-xl font-semibold">Carros</h3>
+                <p className="text-blue-100">
+                  {filteredListings.filter(l => l.category === 'carros').length} anúncios disponíveis
+                </p>
+              </div>
+            </div>
           </div>
           
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-muted rounded-lg h-64 mb-4"></div>
-                  <div className="bg-muted rounded h-4 w-3/4 mb-2"></div>
-                  <div className="bg-muted rounded h-4 w-1/2"></div>
-                </div>
-              ))}
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-6 text-white">
+            <div className="flex items-center gap-4">
+              <Bike className="w-8 h-8" />
+              <div>
+                <h3 className="text-xl font-semibold">Motos</h3>
+                <p className="text-orange-100">
+                  {filteredListings.filter(l => l.category === 'motos').length} anúncios disponíveis
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Listings Grid */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-semibold">Todos os Anúncios</h2>
+            <div className="text-sm text-muted-foreground">
+              {filteredListings.length} resultado(s) encontrado(s)
+            </div>
+          </div>
+
+          {filteredListings.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold mb-2">Nenhum anúncio encontrado</h3>
+              <p className="text-muted-foreground">
+                Tente ajustar os filtros para encontrar o que você procura
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {listings.map((listing) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredListings.map((listing) => (
                 <ListingCard key={listing.id} listing={listing} />
               ))}
             </div>
           )}
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Pronto para vender seu veículo?
-          </h2>
-          <p className="text-xl mb-8 opacity-90">
-            Anuncie grátis e alcance milhares de compradores interessados
-          </p>
-          <Button 
-            size="lg" 
-            variant="secondary" 
-            onClick={() => navigate('/create-listing')}
-            style={{ backgroundColor: '#FFCD44', color: 'black' }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
-          >
-            Anunciar Agora
-          </Button>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

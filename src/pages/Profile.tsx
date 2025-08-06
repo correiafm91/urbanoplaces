@@ -1,44 +1,34 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { User, Settings, Star, Eye, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { PlanSelectionModal } from "@/components/PlanSelectionModal";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
+import { Link } from "react-router-dom";
+import { Eye, Plus } from "lucide-react";
 import { VerificationBadge } from "@/components/VerificationBadge";
-import { CategoryBadge } from "@/components/CategoryBadge";
-import { ListingSelectionModal } from "@/components/ListingSelectionModal";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  user_type?: string;
-  phone: string;
-  phone_display?: string;
-  city_id?: string;
-  cpf?: string;
-  cnpj?: string;
-  razao_social?: string;
-  instagram?: string;
-  free_ads_used: number;
-  paid_ads_balance: number;
-  profile_photo?: string;
-  profile_completed: boolean;
-}
 
 interface City {
   id: string;
   name: string;
   state: string;
-  zip_code?: string;
+}
+
+interface ProfileData {
+  full_name: string;
+  phone: string;
+  phone_display: string;
+  whatsapp: string;
+  instagram: string;
+  user_type: string;
+  cpf: string;
+  cnpj: string;
+  razao_social: string;
+  city_id: string;
+  profile_photo: string;
 }
 
 interface UserListing {
@@ -47,124 +37,70 @@ interface UserListing {
   price: number;
   is_active: boolean;
   created_at: string;
-  category: string;
-  plans?: {
-    plan_type: string;
-  };
 }
 
 export default function Profile() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [cities, setCities] = useState<City[]>([]);
-  const [listings, setListings] = useState<UserListing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [showPlanModal, setShowPlanModal] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [showListingModal, setShowListingModal] = useState(false);
-  const [selectedListingId, setSelectedListingId] = useState<string>("");
+  const [profile, setProfile] = useState<any>(null);
+  const [formData, setFormData] = useState<ProfileData>({
+    full_name: "",
+    phone: "",
+    phone_display: "",
+    whatsapp: "",
+    instagram: "",
+    user_type: "pf",
+    cpf: "",
+    cnpj: "",
+    razao_social: "",
+    city_id: "",
+    profile_photo: "",
+  });
+  const [cities, setCities] = useState<City[]>([]);
+  const [userListings, setUserListings] = useState<UserListing[]>([]);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
-    checkAuth();
+    fetchProfile();
     fetchCities();
+    fetchUserListings();
   }, []);
 
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-    setUser(user);
-    fetchProfile(user.id);
-    fetchListings(user.id);
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+    }).format(price);
   };
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) throw error;
-      setProfile(data);
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar perfil",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCities = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('cities')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setCities(data || []);
-    } catch (error) {
-      console.error('Error fetching cities:', error);
-    }
-  };
-
-  const fetchListings = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select(`
-          id,
-          title,
-          price,
-          is_active,
-          created_at,
-          category,
-          plans(plan_type)
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setListings(data || []);
-    } catch (error) {
-      console.error('Error fetching listings:', error);
-    }
-  };
-
-  const saveProfile = async () => {
-    if (!profile) return;
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setSaving(true);
     try {
+      setSaving(true);
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: profile.full_name,
-          phone: profile.phone,
-          phone_display: profile.phone_display,
-          city_id: profile.city_id,
-          cpf: profile.cpf,
-          cnpj: profile.cnpj,
-          razao_social: profile.razao_social,
-          instagram: profile.instagram,
-          profile_photo: profile.profile_photo,
+          full_name: formData.full_name,
+          phone: formData.phone,
+          phone_display: formData.phone_display,
+          whatsapp: formData.whatsapp,
+          instagram: formData.instagram,
+          user_type: formData.user_type,
+          cpf: formData.cpf,
+          cnpj: formData.cnpj,
+          razao_social: formData.razao_social,
+          city_id: formData.city_id,
+          profile_photo: formData.profile_photo
         })
-        .eq('user_id', profile.user_id);
+        .eq('user_id', user?.id);
 
       if (error) throw error;
 
       toast({
-        title: "Perfil atualizado",
-        description: "Suas informações foram salvas com sucesso",
+        title: "Sucesso",
+        description: "Perfil atualizado com sucesso",
       });
     } catch (error: any) {
       toast({
@@ -177,378 +113,335 @@ export default function Profile() {
     }
   };
 
-  const deleteListing = async (listingId: string) => {
+  const fetchProfile = async () => {
     try {
-      const { error } = await supabase
-        .from('listings')
-        .delete()
-        .eq('id', listingId);
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        setUser(userData.user);
 
-      if (error) throw error;
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userData.user.id)
+          .single();
 
-      setListings(prev => prev.filter(listing => listing.id !== listingId));
+        if (error) throw error;
 
-      toast({
-        title: "Anúncio excluído",
-        description: "O anúncio foi removido com sucesso",
-      });
+        setProfile(profileData);
+        setFormData({
+          full_name: profileData?.full_name || "",
+          phone: profileData?.phone || "",
+          phone_display: profileData?.phone_display || "",
+          whatsapp: profileData?.whatsapp || "",
+          instagram: profileData?.instagram || "",
+          user_type: profileData?.user_type || "pf",
+          cpf: profileData?.cpf || "",
+          cnpj: profileData?.cnpj || "",
+          razao_social: profileData?.razao_social || "",
+          city_id: profileData?.city_id || "",
+          profile_photo: profileData?.profile_photo || "",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: "Erro ao carregar perfil",
         variant: "destructive",
       });
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-    }).format(price);
+  const fetchCities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cities')
+        .select('id, name, state')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setCities(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar cidades",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleListingSelected = (listingId: string) => {
-    setSelectedListingId(listingId);
-    setShowListingModal(false);
-    setShowPlanModal(true);
+  const fetchUserListings = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        const { data, error } = await supabase
+          .from('listings')
+          .select('id, title, price, is_active, created_at')
+          .eq('user_id', userData.user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setUserListings(data || []);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar seus anúncios",
+        variant: "destructive",
+      });
+    }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-6">
-            <div className="bg-muted rounded-lg h-32"></div>
-            <div className="bg-muted rounded-lg h-64"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4 text-black">Perfil não encontrado</h1>
-          <Button onClick={() => navigate('/')}>Voltar ao início</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600 rounded-full">
-              <User className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-bold text-black">Olá, {profile.full_name}!</h1>
-                <VerificationBadge isVerified={profile.profile_completed} />
-              </div>
-              <p className="text-muted-foreground">Gerencie suas informações e anúncios</p>
-            </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Meu Perfil</h1>
+            <p className="text-muted-foreground">Gerencie suas informações e anúncios</p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="text-2xl font-bold text-blue-600">∞</div>
-                <p className="text-sm text-muted-foreground">Anúncios disponíveis</p>
-                <p className="text-xs text-green-600">Ilimitado e gratuito!</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="text-2xl font-bold text-black">{listings.length}</div>
-                <p className="text-sm text-muted-foreground">Anúncios criados</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="text-2xl font-bold text-black">
-                  {listings.filter(l => l.is_active).length}
-                </div>
-                <p className="text-sm text-muted-foreground">Anúncios ativos</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-3 gap-8">
             {/* Profile Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-black">
-                  <Settings className="w-5 h-5" />
-                  Informações Pessoais
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ProfileImageUpload
-                  currentImage={profile.profile_photo}
-                  onImageChange={(imageUrl) => setProfile({ ...profile, profile_photo: imageUrl })}
-                />
-                
-                <div className="space-y-2">
-                  <Label htmlFor="full_name" className="text-black">
-                    {profile.user_type === 'pj' ? 'Razão Social' : 'Nome Completo'}
-                  </Label>
-                  <Input
-                    id="full_name"
-                    value={profile.user_type === 'pj' ? profile.razao_social || '' : profile.full_name}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      ...(profile.user_type === 'pj' 
-                        ? { razao_social: e.target.value }
-                        : { full_name: e.target.value }
-                      )
-                    })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-black">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={profile.phone || ''}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone_display" className="text-black">
-                    Telefone para exibir no anúncio
-                  </Label>
-                  <Input
-                    id="phone_display"
-                    value={profile.phone_display || ''}
-                    onChange={(e) => setProfile({ ...profile, phone_display: e.target.value })}
-                    placeholder="(11) 99999-9999"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Este número será exibido nos seus anúncios
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="city" className="text-black">Cidade</Label>
-                  <Select
-                    value={profile.city_id || ''}
-                    onValueChange={(value) => setProfile({ ...profile, city_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione sua cidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((city) => (
-                        <SelectItem key={city.id} value={city.id}>
-                          {city.name}, {city.state}
-                          {city.zip_code && ` - ${city.zip_code}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {profile.user_type === 'pf' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="cpf" className="text-black">CPF</Label>
-                    <Input
-                      id="cpf"
-                      value={profile.cpf || ''}
-                      onChange={(e) => setProfile({ ...profile, cpf: e.target.value })}
-                      placeholder="000.000.000-00"
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informações Pessoais</CardTitle>
+                  <CardDescription>
+                    Mantenha seus dados atualizados para melhor experiência
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSaveProfile} className="space-y-6">
+                    <ProfileImageUpload
+                      currentImage={formData.profile_photo}
+                      onImageChange={(url) => setFormData(prev => ({ ...prev, profile_photo: url }))}
                     />
-                  </div>
-                )}
 
-                {profile.user_type === 'pj' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="cnpj" className="text-black">CNPJ</Label>
-                      <Input
-                        id="cnpj"
-                        value={profile.cnpj || ''}
-                        onChange={(e) => setProfile({ ...profile, cnpj: e.target.value })}
-                        placeholder="00.000.000/0000-00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="instagram" className="text-black">Instagram</Label>
-                      <Input
-                        id="instagram"
-                        value={profile.instagram || ''}
-                        onChange={(e) => setProfile({ ...profile, instagram: e.target.value })}
-                        placeholder="@suaempresa"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <Button 
-                  onClick={saveProfile} 
-                  disabled={saving}
-                  className="w-full"
-                  style={{ backgroundColor: '#FFCD44', color: 'black' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
-                >
-                  {saving ? "Salvando..." : "Salvar Alterações"}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* My Listings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-black">
-                  <Star className="w-5 h-5" />
-                  Meus Anúncios
-                </CardTitle>
-                <CardDescription>
-                  Gerencie seus anúncios ativos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Button 
-                    onClick={() => navigate('/create-listing')}
-                    className="w-full"
-                    style={{ backgroundColor: '#FFCD44', color: 'black' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
-                  >
-                    Criar Novo Anúncio
-                  </Button>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {listings.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-8">
-                        Você ainda não tem anúncios
+                    {/* User Name Display */}
+                    <div className="text-center">
+                      <h2 className="text-xl font-semibold">
+                        {formData.user_type === 'pj' ? formData.razao_social : formData.full_name}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {formData.user_type === 'pj' ? 'Pessoa Jurídica' : 'Pessoa Física'}
                       </p>
-                    ) : (
-                      listings.map((listing) => (
-                        <div key={listing.id} className="border rounded-lg p-3 space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-medium text-sm line-clamp-2 text-black">
-                                {listing.title}
-                              </h4>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="text-black">{formatPrice(listing.price)}</span>
-                                <span>•</span>
-                                <span>{new Date(listing.created_at).toLocaleDateString('pt-BR')}</span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <CategoryBadge 
-                                  category={listing.category} 
-                                  planType={listing.plans?.plan_type} 
-                                />
-                              </div>
-                            </div>
-                            <Badge 
-                              variant={listing.is_active ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {listing.is_active ? "Ativo" : "Inativo"}
-                            </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="user_type">Tipo de usuário</Label>
+                        <Select 
+                          value={formData.user_type || "pf"} 
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, user_type: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pf">Pessoa Física</SelectItem>
+                            <SelectItem value="pj">Pessoa Jurídica</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {formData.user_type === 'pj' ? (
+                        <>
+                          <div>
+                            <Label htmlFor="razao_social">Razão Social</Label>
+                            <Input
+                              id="razao_social"
+                              type="text"
+                              value={formData.razao_social || ""}
+                              onChange={(e) => setFormData(prev => ({ ...prev, razao_social: e.target.value }))}
+                              placeholder="Nome da empresa"
+                            />
                           </div>
-                          
+                          <div>
+                            <Label htmlFor="cnpj">CNPJ</Label>
+                            <Input
+                              id="cnpj"
+                              type="text"
+                              value={formData.cnpj || ""}
+                              onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
+                              placeholder="00.000.000/0000-00"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <Label htmlFor="full_name">Nome Completo</Label>
+                            <Input
+                              id="full_name"
+                              type="text"
+                              value={formData.full_name}
+                              onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                              placeholder="Seu nome completo"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="cpf">CPF</Label>
+                            <Input
+                              id="cpf"
+                              type="text"
+                              value={formData.cpf || ""}
+                              onChange={(e) => setFormData(prev => ({ ...prev, cpf: e.target.value }))}
+                              placeholder="000.000.000-00"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="phone">Telefone</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={formData.phone || ""}
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="(11) 99999-9999"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone_display">Telefone para exibição</Label>
+                        <Input
+                          id="phone_display"
+                          type="tel"
+                          value={formData.phone_display || ""}
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone_display: e.target.value }))}
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="whatsapp">WhatsApp</Label>
+                        <Input
+                          id="whatsapp"
+                          type="tel"
+                          value={formData.whatsapp || ""}
+                          onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="instagram">Instagram</Label>
+                        <Input
+                          id="instagram"
+                          type="text"
+                          value={formData.instagram || ""}
+                          onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
+                          placeholder="@usuario"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="city_id">Cidade</Label>
+                      <Select 
+                        value={formData.city_id || ""} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, city_id: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione sua cidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cities.map((city) => (
+                            <SelectItem key={city.id} value={city.id}>
+                              {city.name}, {city.state}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      disabled={saving}
+                      className="w-full"
+                      style={{ backgroundColor: '#FFCD44', color: 'black' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
+                    >
+                      {saving ? "Salvando..." : "Salvar Alterações"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* User Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Estatísticas</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between">
+                    <span>Anúncios ativos</span>
+                    <span className="font-semibold">{userListings.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Perfil verificado</span>
+                    <VerificationBadge isVerified={profile?.profile_completed || false} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* My Listings */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Meus Anúncios</CardTitle>
+                  <Link to="/create-listing">
+                    <Button 
+                      size="sm"
+                      style={{ backgroundColor: '#FFCD44', color: 'black' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Criar Anúncio
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent>
+                  {userListings.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      Você ainda não tem anúncios
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {userListings.map((listing) => (
+                        <div key={listing.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{listing.title}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {formatPrice(listing.price)} • {new Date(listing.created_at).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
                           <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => navigate(`/listing/${listing.id}`)}
-                              className="flex-1 text-xs"
-                            >
-                              <Eye className="w-3 h-3 mr-1" />
-                              Ver
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => deleteListing(listing.id)}
-                              className="flex-1 text-xs text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              Excluir
-                            </Button>
+                            <Link to={`/listing/${listing.id}`}>
+                              <Button size="sm" variant="ghost">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </Link>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <Separator />
-                
-                {/* Highlight Plans Section - moved inside listings card */}
-                <div className="pt-4">
-                  <h4 className="font-medium mb-2 text-black">Destaque seus anúncios</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Selecione um anúncio para destacar
-                  </p>
-                  <Button 
-                    onClick={() => setShowListingModal(true)}
-                    className="w-full"
-                    style={{ backgroundColor: '#FFCD44', color: 'black' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
-                    disabled={listings.filter(l => l.is_active).length === 0}
-                  >
-                    <Star className="w-4 h-4 mr-2" />
-                    Ver Planos Disponíveis
-                  </Button>
-                  {listings.filter(l => l.is_active).length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                      Você precisa ter pelo menos um anúncio ativo
-                    </p>
+                      ))}
+                    </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
-
-      {showListingModal && user && (
-        <ListingSelectionModal
-          isOpen={showListingModal}
-          onClose={() => setShowListingModal(false)}
-          onListingSelected={handleListingSelected}
-          user={user}
-        />
-      )}
-
-      {showPlanModal && user && selectedListingId && (
-        <PlanSelectionModal
-          isOpen={showPlanModal}
-          onClose={() => {
-            setShowPlanModal(false);
-            setSelectedListingId("");
-          }}
-          user={user}
-          listingId={selectedListingId}
-          onPlanSelected={() => {
-            setShowPlanModal(false);
-            setSelectedListingId("");
-            fetchListings(user.id);
-          }}
-        />
-      )}
     </div>
   );
 }

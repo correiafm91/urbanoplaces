@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Upload, Image as ImageIcon } from "lucide-react";
+import { X, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,12 +35,14 @@ export function ImageUploadMultiple({
 
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         throw new Error('Usuário não autenticado');
       }
 
-      const uploadPromises = files.map(async (file) => {
+      console.log('Starting upload for', files.length, 'files');
+
+      const uploadPromises = files.map(async (file, index) => {
         // Validate file type
         if (!file.type.startsWith('image/')) {
           throw new Error(`${file.name} não é uma imagem válida`);
@@ -52,7 +54,9 @@ export function ImageUploadMultiple({
         }
 
         const fileExt = file.name.split('.').pop();
-        const fileName = `listings/${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `listings/${user.id}/${Date.now()}-${index}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+        console.log('Uploading file:', fileName);
 
         const { data, error } = await supabase.storage
           .from('images')
@@ -63,13 +67,14 @@ export function ImageUploadMultiple({
 
         if (error) {
           console.error('Storage error:', error);
-          throw error;
+          throw new Error(`Erro no upload de ${file.name}: ${error.message}`);
         }
 
         const { data: urlData } = supabase.storage
           .from('images')
           .getPublicUrl(data.path);
 
+        console.log('Upload successful for:', fileName, 'URL:', urlData.publicUrl);
         return urlData.publicUrl;
       });
 
@@ -89,10 +94,9 @@ export function ImageUploadMultiple({
       });
     } finally {
       setUploading(false);
+      // Clear the input
+      event.target.value = '';
     }
-
-    // Clear the input
-    event.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -109,6 +113,10 @@ export function ImageUploadMultiple({
               src={image}
               alt={`Imagem ${index + 1}`}
               className="w-full h-24 object-cover rounded border"
+              onError={(e) => {
+                console.error('Error loading image:', image);
+                e.currentTarget.src = '/placeholder.svg';
+              }}
             />
             <Button
               type="button"

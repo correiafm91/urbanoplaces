@@ -51,6 +51,7 @@ export default function ListingDetail() {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showSellerModal, setShowSellerModal] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -224,11 +225,8 @@ export default function ListingDetail() {
     return phone.replace(/\D/g, '');
   };
 
-  const viewSellerProfile = (sellerId: string) => {
-    toast({
-      title: "Informações do Vendedor",
-      description: "Funcionalidade de perfil do vendedor em desenvolvimento",
-    });
+  const viewSellerProfile = () => {
+    setShowSellerModal(true);
   };
 
   if (loading) {
@@ -271,12 +269,6 @@ export default function ListingDetail() {
               >
                 <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
               </Button>
-              
-              {listing.plans && (
-                <div className="absolute top-2 left-2">
-                  <CategoryBadge planType={listing.plans.plan_type} />
-                </div>
-              )}
             </div>
           </div>
 
@@ -340,7 +332,7 @@ export default function ListingDetail() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => viewSellerProfile(listing.profiles.id)}
+                    onClick={viewSellerProfile}
                   >
                     <User className="w-4 h-4 mr-2" />
                     Ver Perfil
@@ -409,6 +401,13 @@ export default function ListingDetail() {
             </Card>
           </div>
         </div>
+
+        {/* Seller Profile Modal */}
+        <SellerProfileModal
+          isOpen={showSellerModal}
+          onClose={() => setShowSellerModal(false)}
+          seller={listing.profiles}
+        />
       </div>
     </div>
   );
