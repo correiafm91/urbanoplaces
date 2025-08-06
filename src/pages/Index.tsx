@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Car, Bike, Truck, Ship, Package, MapPin, Calendar, Eye, Heart } from "lucide-react";
+import { Search, Car, Bike, Truck, Ship, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ListingCard } from "@/components/ListingCard";
 
@@ -35,7 +36,6 @@ interface Listing {
 interface CategoryStats {
   category: string;
   count: number;
-  brands: { [key: string]: number };
 }
 
 export default function Index() {
@@ -131,25 +131,19 @@ export default function Index() {
 
       if (error) throw error;
 
-      // Process the data to get category and brand counts
-      const stats: { [key: string]: { count: number; brands: { [key: string]: number } } } = {};
+      // Process the data to get only category counts (without showing brand details)
+      const stats: { [key: string]: number } = {};
       
       data?.forEach(listing => {
         if (!stats[listing.category]) {
-          stats[listing.category] = { count: 0, brands: {} };
+          stats[listing.category] = 0;
         }
-        stats[listing.category].count++;
-        
-        if (!stats[listing.category].brands[listing.brand]) {
-          stats[listing.category].brands[listing.brand] = 0;
-        }
-        stats[listing.category].brands[listing.brand]++;
+        stats[listing.category]++;
       });
 
-      const categoryStatsArray = Object.entries(stats).map(([category, data]) => ({
+      const categoryStatsArray = Object.entries(stats).map(([category, count]) => ({
         category,
-        count: data.count,
-        brands: data.brands
+        count
       }));
 
       setCategoryStats(categoryStatsArray);
@@ -240,17 +234,6 @@ export default function Index() {
                     <Badge variant="secondary" className="text-xs">
                       {stat.count} anúncios
                     </Badge>
-                    
-                    <div className="mt-3 space-y-1">
-                      {Object.entries(stat.brands)
-                        .sort(([,a], [,b]) => b - a)
-                        .slice(0, 3)
-                        .map(([brand, count]) => (
-                          <div key={brand} className="text-xs text-muted-foreground">
-                            {brand}: {count}
-                          </div>
-                        ))}
-                    </div>
                   </CardContent>
                 </Card>
               </Link>

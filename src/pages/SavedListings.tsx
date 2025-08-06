@@ -18,12 +18,17 @@ interface SavedListing {
     mileage?: number;
     color?: string;
     images: string[];
+    category: string;
     city: {
       name: string;
       state: string;
     };
     created_at: string;
     is_active: boolean;
+    is_featured: boolean;
+    plans?: {
+      plan_type: string;
+    };
   };
 }
 
@@ -62,9 +67,12 @@ export default function SavedListings() {
             mileage,
             color,
             images,
+            category,
             created_at,
             is_active,
-            city:cities(name, state)
+            is_featured,
+            city:cities(name, state),
+            plans(plan_type)
           )
         `)
         .eq('user_id', userId)

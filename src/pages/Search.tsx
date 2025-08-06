@@ -20,12 +20,16 @@ interface Listing {
   mileage?: number;
   color?: string;
   images: string[];
+  category: string;
   city: {
     name: string;
     state: string;
   };
   created_at: string;
   is_featured: boolean;
+  plans?: {
+    plan_type: string;
+  };
 }
 
 const carBrands = [
@@ -58,7 +62,8 @@ export default function Search() {
         .from('listings')
         .select(`
           *,
-          city:cities(name, state)
+          city:cities(name, state),
+          plans(plan_type)
         `)
         .eq('is_active', true)
         .order('is_featured', { ascending: false })

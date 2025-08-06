@@ -1,7 +1,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Heart, MapPin, Calendar } from "lucide-react";
+import { Eye, MapPin, Calendar } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FeaturedBadge } from "./FeaturedBadge";
@@ -75,6 +75,13 @@ export function ListingCard({ listing }: ListingCardProps) {
               Ver
             </Badge>
           </div>
+
+          {/* Preço em destaque sobre a imagem */}
+          <div className="absolute bottom-2 left-2 bg-black/80 text-white px-3 py-1 rounded-md">
+            <span className="text-lg font-bold">
+              {formatPrice(listing.price)}
+            </span>
+          </div>
         </div>
 
         <CardContent className="p-4">
@@ -84,9 +91,6 @@ export function ListingCard({ listing }: ListingCardProps) {
             </h3>
             
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-primary">
-                {formatPrice(listing.price)}
-              </span>
               <Badge variant="outline" className="text-xs">
                 {listing.year}
               </Badge>
