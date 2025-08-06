@@ -47,13 +47,13 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
       }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `profile-${user.id}-${Date.now()}.${fileExt}`;
+      const fileName = `profile/${user.id}/${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
         .from('images')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true
         });
 
       if (error) {
@@ -100,9 +100,12 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
         <label htmlFor="profile-image" className="absolute -bottom-2 -right-2">
           <Button
             size="sm"
-            className="rounded-full w-8 h-8 p-0 bg-[#FFCD44] hover:bg-[#FFD700] text-black"
+            className="rounded-full w-8 h-8 p-0"
+            style={{ backgroundColor: '#FFCD44', color: 'black' }}
             disabled={uploading}
             type="button"
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
           >
             <Upload className="w-4 h-4" />
           </Button>

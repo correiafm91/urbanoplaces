@@ -76,9 +76,9 @@ export function ListingCard({ listing }: ListingCardProps) {
             </Badge>
           </div>
 
-          {/* Preço em destaque sobre a imagem */}
+          {/* Preço em destaque sobre a imagem em cor preta */}
           <div className="absolute bottom-2 left-2 bg-black/80 text-white px-3 py-1 rounded-md">
-            <span className="text-lg font-bold">
+            <span className="text-lg font-bold text-black bg-white px-2 py-1 rounded">
               {formatPrice(listing.price)}
             </span>
           </div>

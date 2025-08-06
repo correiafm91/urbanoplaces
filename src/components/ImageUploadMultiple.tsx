@@ -52,7 +52,7 @@ export function ImageUploadMultiple({
         }
 
         const fileExt = file.name.split('.').pop();
-        const fileName = `listing-${user.id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `listings/${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
         const { data, error } = await supabase.storage
           .from('images')

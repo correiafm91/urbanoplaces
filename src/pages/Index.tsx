@@ -201,7 +201,12 @@ export default function Index() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
             />
-            <Button type="submit" className="bg-[#FFCD44] hover:bg-[#FFD700] text-black">
+            <Button 
+              type="submit" 
+              style={{ backgroundColor: '#FFCD44', color: 'black' }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
+            >
               <Search className="w-4 h-4 mr-2" />
               Buscar
             </Button>
@@ -317,7 +322,9 @@ export default function Index() {
             size="lg" 
             variant="secondary" 
             onClick={() => navigate('/create-listing')}
-            className="bg-[#FFCD44] hover:bg-[#FFD700] text-black"
+            style={{ backgroundColor: '#FFCD44', color: 'black' }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
           >
             Anunciar Agora
           </Button>

@@ -14,6 +14,7 @@ import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { VerificationBadge } from "@/components/VerificationBadge";
 import { CategoryBadge } from "@/components/CategoryBadge";
+import { ListingSelectionModal } from "@/components/ListingSelectionModal";
 
 interface Profile {
   id: string;
@@ -60,6 +61,8 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [showListingModal, setShowListingModal] = useState(false);
+  const [selectedListingId, setSelectedListingId] = useState<string>("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -204,6 +207,12 @@ export default function Profile() {
       currency: 'BRL',
       minimumFractionDigits: 0,
     }).format(price);
+  };
+
+  const handleListingSelected = (listingId: string) => {
+    setSelectedListingId(listingId);
+    setShowListingModal(false);
+    setShowPlanModal(true);
   };
 
   if (loading) {
@@ -390,7 +399,10 @@ export default function Profile() {
                 <Button 
                   onClick={saveProfile} 
                   disabled={saving}
-                  className="w-full bg-[#FFCD44] hover:bg-[#FFD700] text-black"
+                  className="w-full"
+                  style={{ backgroundColor: '#FFCD44', color: 'black' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
                 >
                   {saving ? "Salvando..." : "Salvar Alterações"}
                 </Button>
@@ -412,7 +424,10 @@ export default function Profile() {
                 <div className="space-y-4">
                   <Button 
                     onClick={() => navigate('/create-listing')}
-                    className="w-full bg-[#FFCD44] hover:bg-[#FFD700] text-black"
+                    className="w-full"
+                    style={{ backgroundColor: '#FFCD44', color: 'black' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
                   >
                     Criar Novo Anúncio
                   </Button>
@@ -477,38 +492,59 @@ export default function Profile() {
                     )}
                   </div>
                 </div>
+
+                <Separator />
+                
+                {/* Highlight Plans Section - moved inside listings card */}
+                <div className="pt-4">
+                  <h4 className="font-medium mb-2 text-black">Destaque seus anúncios</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Selecione um anúncio para destacar
+                  </p>
+                  <Button 
+                    onClick={() => setShowListingModal(true)}
+                    className="w-full"
+                    style={{ backgroundColor: '#FFCD44', color: 'black' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
+                    disabled={listings.filter(l => l.is_active).length === 0}
+                  >
+                    <Star className="w-4 h-4 mr-2" />
+                    Ver Planos Disponíveis
+                  </Button>
+                  {listings.filter(l => l.is_active).length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Você precisa ter pelo menos um anúncio ativo
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
-
-          {/* Highlight Plans */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-black">Destaque seus anúncios</CardTitle>
-              <CardDescription>
-                Aumente a visibilidade dos seus anúncios com nossos planos de destaque
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => setShowPlanModal(true)}
-                className="bg-blue-600 text-white hover:bg-blue-700"
-              >
-                <Star className="w-4 h-4 mr-2" />
-                Ver Planos de Destaque
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
-      {showPlanModal && user && (
+      {showListingModal && user && (
+        <ListingSelectionModal
+          isOpen={showListingModal}
+          onClose={() => setShowListingModal(false)}
+          onListingSelected={handleListingSelected}
+          user={user}
+        />
+      )}
+
+      {showPlanModal && user && selectedListingId && (
         <PlanSelectionModal
           isOpen={showPlanModal}
-          onClose={() => setShowPlanModal(false)}
+          onClose={() => {
+            setShowPlanModal(false);
+            setSelectedListingId("");
+          }}
           user={user}
+          listingId={selectedListingId}
           onPlanSelected={() => {
             setShowPlanModal(false);
+            setSelectedListingId("");
             fetchListings(user.id);
           }}
         />
