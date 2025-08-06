@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { CategoryBadge } from "@/components/CategoryBadge";
 import { VerificationBadge } from "@/components/VerificationBadge";
+import { SellerProfileModal } from "@/components/SellerProfileModal";
 
 interface ListingDetail {
   id: string;
