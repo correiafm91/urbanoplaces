@@ -1,57 +1,60 @@
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-export const useChat = () => {
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+interface Message {
+  id: string;
+  content: string;
+  filtered_content?: string;
+  sender_id: string;
+  created_at: string;
+  is_filtered: boolean;
+}
+
+export function useChat(conversationId: string | null) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    checkUnreadMessages();
-    
-    // Configurar real-time para novas mensagens
-    const channel = supabase
-      .channel('messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages'
-      }, () => {
-        checkUnreadMessages();
-      })
+    if (!conversationId) return;
+
+    const fetchMessages = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase.rpc('get_conversation_messages', {
+          p_conversation_id: conversationId
+        });
+        setMessages(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar mensagens:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMessages();
+
+    // Subscribe to new messages using a generic subscription
+    const subscription = supabase
+      .channel(`conversation-${conversationId}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        }, 
+        () => {
+          // Reload messages when changes occur
+          fetchMessages();
+        }
+      )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [conversationId]);
 
-  const checkUnreadMessages = async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) return;
-
-      // Verificar se há mensagens não lidas (implementação simplificada)
-      const { data: conversations } = await supabase
-        .from('conversations')
-        .select('id')
-        .or(`buyer_id.eq.${userData.user.id},seller_id.eq.${userData.user.id}`);
-
-      if (conversations && conversations.length > 0) {
-        const conversationIds = conversations.map(c => c.id);
-        
-        const { data: messages } = await supabase
-          .from('messages')
-          .select('id')
-          .in('conversation_id', conversationIds)
-          .neq('sender_id', userData.user.id)
-          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-        setHasUnreadMessages((messages?.length || 0) > 0);
-      }
-    } catch (error) {
-      console.error('Erro ao verificar mensagens:', error);
-    }
-  };
-
-  return { hasUnreadMessages };
-};
+  return { messages, loading };
+}

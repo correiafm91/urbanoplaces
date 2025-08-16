@@ -72,32 +72,18 @@ export function ChatModal({
 
       setCurrentUserId(userData.user.id);
 
-      // Verificar se já existe uma conversa
-      let { data: existingConversation } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('listing_id', listingId)
-        .eq('buyer_id', userData.user.id)
-        .single();
+      // Verificar se já existe uma conversa - usando rpc para acessar as novas tabelas
+      const { data: existingConversation } = await supabase.rpc('get_or_create_conversation', {
+        p_listing_id: listingId,
+        p_buyer_id: userData.user.id,
+        p_seller_id: sellerId
+      });
 
-      if (!existingConversation) {
-        // Criar nova conversa
-        const { data: newConversation, error } = await supabase
-          .from('conversations')
-          .insert({
-            listing_id: listingId,
-            buyer_id: userData.user.id,
-            seller_id: sellerId,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        existingConversation = newConversation;
+      if (existingConversation) {
+        await loadMessages(existingConversation);
       }
-
-      await loadMessages(existingConversation.id);
     } catch (error: any) {
+      console.error('Erro ao inicializar chat:', error);
       toast({
         title: "Erro",
         description: "Erro ao inicializar chat",
@@ -108,19 +94,16 @@ export function ChatModal({
 
   const loadMessages = async (conversationId: string) => {
     try {
-      const { data: messages, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      const { data: messages } = await supabase.rpc('get_conversation_messages', {
+        p_conversation_id: conversationId
+      });
 
       setConversation({
         id: conversationId,
         messages: messages || [],
       });
     } catch (error: any) {
+      console.error('Erro ao carregar mensagens:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar mensagens",
@@ -138,15 +121,13 @@ export function ChatModal({
       // Filtrar a mensagem
       const { filtered, isFiltered } = filterContactInfo(newMessage);
 
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversation.id,
-          sender_id: currentUserId,
-          content: newMessage,
-          filtered_content: isFiltered ? filtered : null,
-          is_filtered: isFiltered,
-        });
+      const { error } = await supabase.rpc('send_message', {
+        p_conversation_id: conversation.id,
+        p_sender_id: currentUserId,
+        p_content: newMessage,
+        p_filtered_content: isFiltered ? filtered : null,
+        p_is_filtered: isFiltered
+      });
 
       if (error) throw error;
 
@@ -161,6 +142,7 @@ export function ChatModal({
       setNewMessage("");
       await loadMessages(conversation.id);
     } catch (error: any) {
+      console.error('Erro ao enviar mensagem:', error);
       toast({
         title: "Erro",
         description: "Erro ao enviar mensagem",
