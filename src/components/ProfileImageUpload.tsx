@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Camera, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { addWatermark } from "@/utils/watermark";
 
 interface ProfileImageUploadProps {
   currentImage?: string;
@@ -46,14 +47,22 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
         throw new Error('Usuário não autenticado');
       }
 
-      const fileExt = file.name.split('.').pop();
+      console.log('Adding watermark to profile image...');
+      // Add watermark to profile image
+      const watermarkedFile = await addWatermark(file, {
+        text: 'Perfil',
+        position: 'bottom-right',
+        opacity: 0.6,
+      });
+
+      const fileExt = watermarkedFile.name.split('.').pop();
       const fileName = `profile/${user.id}/${Date.now()}.${fileExt}`;
 
-      console.log('Uploading file:', fileName);
+      console.log('Uploading watermarked file:', fileName);
 
       const { data, error: uploadError } = await supabase.storage
         .from('images')
-        .upload(fileName, file, {
+        .upload(fileName, watermarkedFile, {
           cacheControl: '3600',
           upsert: true
         });
@@ -75,7 +84,7 @@ export function ProfileImageUpload({ currentImage, onImageChange }: ProfileImage
       
       toast({
         title: "Sucesso",
-        description: "Foto de perfil atualizada",
+        description: "Foto de perfil atualizada com marca d'água",
       });
     } catch (error: any) {
       console.error('Complete upload error:', error);

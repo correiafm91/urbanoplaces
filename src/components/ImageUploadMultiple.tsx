@@ -5,17 +5,20 @@ import { Input } from "@/components/ui/input";
 import { X, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { addWatermarkToMultipleImages } from "@/utils/watermark";
 
 interface ImageUploadMultipleProps {
   images: string[];
   onImagesChange: (images: string[]) => void;
   maxImages?: number;
+  listingId?: string;
 }
 
 export function ImageUploadMultiple({ 
   images, 
   onImagesChange, 
-  maxImages = 8 
+  maxImages = 8,
+  listingId 
 }: ImageUploadMultipleProps) {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
@@ -40,23 +43,33 @@ export function ImageUploadMultiple({
         throw new Error('Usuário não autenticado');
       }
 
-      console.log('Starting upload for', files.length, 'files');
+      console.log('Starting watermark process for', files.length, 'files');
 
-      const uploadPromises = files.map(async (file, index) => {
-        // Validate file type
+      // Validate files first
+      for (const file of files) {
         if (!file.type.startsWith('image/')) {
           throw new Error(`${file.name} não é uma imagem válida`);
         }
-
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           throw new Error(`${file.name} excede o limite de 5MB`);
         }
+      }
 
+      // Add watermarks to all images
+      const watermarkedFiles = await addWatermarkToMultipleImages(files, {
+        text: 'AutoTrade',
+        listingId: listingId,
+        position: 'bottom-right',
+        opacity: 0.8,
+      });
+
+      console.log('Watermarks added, starting upload for', watermarkedFiles.length, 'files');
+
+      const uploadPromises = watermarkedFiles.map(async (file, index) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `listings/${user.id}/${Date.now()}-${index}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-        console.log('Uploading file:', fileName);
+        console.log('Uploading watermarked file:', fileName);
 
         const { data, error } = await supabase.storage
           .from('images')
@@ -83,7 +96,7 @@ export function ImageUploadMultiple({
 
       toast({
         title: "Sucesso",
-        description: `${uploadedUrls.length} imagem(ns) enviada(s)`,
+        description: `${uploadedUrls.length} imagem(ns) enviada(s) com marca d'água`,
       });
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -133,7 +146,7 @@ export function ImageUploadMultiple({
         {images.length < maxImages && (
           <label className="w-full h-24 border-2 border-dashed border-muted-foreground/25 rounded flex flex-col items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors">
             {uploading ? (
-              <div className="text-xs text-muted-foreground">Enviando...</div>
+              <div className="text-xs text-muted-foreground">Aplicando marca d'água...</div>
             ) : (
               <>
                 <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
@@ -153,7 +166,7 @@ export function ImageUploadMultiple({
       </div>
       
       <p className="text-xs text-muted-foreground">
-        Máximo {maxImages} imagens. Cada imagem deve ter no máximo 5MB.
+        Máximo {maxImages} imagens. Cada imagem deve ter no máximo 5MB. Marca d'água será aplicada automaticamente.
       </p>
     </div>
   );

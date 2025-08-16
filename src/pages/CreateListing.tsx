@@ -8,12 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Upload, X } from "lucide-react";
-import { v4 as uuidv4 } from 'uuid';
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
+import { Switch } from "@/components/ui/switch";
 import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { ListingSelectionModal } from "@/components/ListingSelectionModal";
+import { ImageUploadMultiple } from "@/components/ImageUploadMultiple";
 
 interface City {
   id: string;
@@ -37,7 +35,6 @@ export default function CreateListing() {
   const [mileage, setMileage] = useState<number | undefined>(undefined);
   const [color, setColor] = useState('');
   const [images, setImages] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
   const [cityId, setCityId] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -93,62 +90,6 @@ export default function CreateListing() {
     }
   };
 
-  const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Nenhuma imagem selecionada",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      const newImages = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const filePath = `listings/${uuidv4()}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('images')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-        newImages.push(data.publicUrl);
-      }
-
-      setImages([...images, ...newImages]);
-      toast({
-        title: "Imagens enviadas",
-        description: "As imagens foram enviadas com sucesso",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-      event.target.value = ''; // Reset the input
-    }
-  };
-
-  const removeImage = (indexToRemove: number) => {
-    setImages(images.filter((_, index) => index !== indexToRemove));
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -199,7 +140,7 @@ export default function CreateListing() {
 
       toast({
         title: "Anúncio criado",
-        description: "Seu anúncio foi criado com sucesso",
+        description: "Seu anúncio foi criado com sucesso com marca d'água aplicada nas imagens",
       });
 
       if (isFeatured) {
@@ -365,37 +306,12 @@ export default function CreateListing() {
 
               <div>
                 <Label className="text-foreground">Imagens</Label>
-                <div className="flex items-center space-x-4">
-                  <input
-                    type="file"
-                    id="image"
-                    multiple
-                    accept="image/*"
-                    onChange={uploadImage}
-                    className="hidden"
-                  />
-                  <Label htmlFor="image" className="bg-primary text-primary-foreground py-2 px-4 rounded-md cursor-pointer hover:bg-primary/90">
-                    <Upload className="w-4 h-4 mr-2 inline-block" />
-                    {uploading ? 'Enviando...' : 'Selecionar Imagens'}
-                  </Label>
-                </div>
-                {images.length > 0 && (
-                  <div className="mt-4 grid grid-cols-3 gap-4">
-                    {images.map((image, index) => (
-                      <div key={index} className="relative">
-                        <img src={image} alt={`Image ${index + 1}`} className="rounded-md" />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white"
-                          onClick={() => removeImage(index)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <ImageUploadMultiple
+                  images={images}
+                  onImagesChange={setImages}
+                  maxImages={8}
+                  listingId={selectedListingForPlan || 'preview'}
+                />
               </div>
 
               <div>
