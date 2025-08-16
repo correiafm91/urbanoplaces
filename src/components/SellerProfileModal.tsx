@@ -6,21 +6,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Phone, MessageCircle, Instagram, MapPin, Calendar, Star } from "lucide-react";
+import { User, MapPin, Calendar, Star, MessageCircle } from "lucide-react";
 import { VerificationBadge } from "./VerificationBadge";
 
 interface SellerProfile {
   id: string;
   full_name: string;
-  phone_display?: string;
   user_type?: string;
-  razao_social?: string;
   profile_photo?: string;
   profile_completed?: boolean;
-  whatsapp?: string;
-  instagram?: string;
+  cpf?: string;
   city?: {
     name: string;
     state: string;
@@ -32,22 +28,21 @@ interface SellerProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   seller: SellerProfile | null;
+  onStartChat?: () => void;
 }
 
-export function SellerProfileModal({ isOpen, onClose, seller }: SellerProfileModalProps) {
+export function SellerProfileModal({ 
+  isOpen, 
+  onClose, 
+  seller, 
+  onStartChat 
+}: SellerProfileModalProps) {
   if (!seller) return null;
 
-  const formatPhoneForWhatsApp = (phone?: string) => {
-    if (!phone) return '';
-    return phone.replace(/\D/g, '');
-  };
-
-  const getDisplayName = () => {
-    return seller.user_type === 'pj' ? seller.razao_social : seller.full_name;
-  };
-
-  const getUserType = () => {
-    return seller.user_type === 'pj' ? 'Pessoa Jurídica' : 'Pessoa Física';
+  const maskCPF = (cpf?: string) => {
+    if (!cpf) return 'Não informado';
+    // Mostra apenas os 3 primeiros e 2 últimos dígitos
+    return cpf.replace(/(\d{3})\d{5}(\d{2})/, '$1.***.**-$2');
   };
 
   return (
@@ -77,15 +72,20 @@ export function SellerProfileModal({ isOpen, onClose, seller }: SellerProfileMod
             
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-lg">{getDisplayName()}</h3>
+                <h3 className="font-semibold text-lg">{seller.full_name}</h3>
                 <VerificationBadge isVerified={seller.profile_completed || false} />
               </div>
-              <p className="text-sm text-muted-foreground">{getUserType()}</p>
+              <p className="text-sm text-muted-foreground">Pessoa Física</p>
             </div>
           </div>
 
           {/* Profile Details */}
           <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <span>CPF: {maskCPF(seller.cpf)}</span>
+            </div>
+
             {seller.city && (
               <div className="flex items-center gap-2 text-sm">
                 <MapPin className="w-4 h-4 text-muted-foreground" />
@@ -108,55 +108,32 @@ export function SellerProfileModal({ isOpen, onClose, seller }: SellerProfileMod
             </div>
           </div>
 
-          {/* Contact Actions */}
+          {/* Chat Action */}
           <div className="space-y-3">
             <h4 className="font-medium">Entrar em contato</h4>
             
-            {seller.phone_display && (
-              <div className="flex gap-2">
-                <Button
-                  className="flex-1"
-                  onClick={() => window.location.href = `tel:${seller.phone_display}`}
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  {seller.phone_display}
-                </Button>
-                
-                <Button
-                  size="icon"
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => {
-                    window.open(`https://wa.me/55${formatPhoneForWhatsApp(seller.phone_display)}`, '_blank');
-                  }}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-
-            {seller.instagram && (
+            {onStartChat && (
               <Button
-                variant="outline"
                 className="w-full"
-                onClick={() => {
-                  const username = seller.instagram?.replace('@', '');
-                  window.open(`https://instagram.com/${username}`, '_blank');
-                }}
+                onClick={onStartChat}
+                style={{ backgroundColor: '#FFCD44', color: 'black' }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
               >
-                <Instagram className="w-4 h-4 mr-2" />
-                {seller.instagram}
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Iniciar Chat Seguro
               </Button>
             )}
           </div>
 
-          {/* Trust Indicators */}
-          <div className="bg-muted p-4 rounded-lg">
-            <h4 className="font-medium mb-2 text-sm">Dicas de Segurança</h4>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Sempre negocie pessoalmente</li>
-              <li>• Verifique a documentação do veículo</li>
-              <li>• Desconfie de preços muito baixos</li>
-              <li>• Prefira locais públicos para encontros</li>
+          {/* Security Notice */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-medium mb-2 text-sm text-blue-900">🔒 Chat Seguro</h4>
+            <ul className="text-xs text-blue-700 space-y-1">
+              <li>• Todas as conversas são protegidas</li>
+              <li>• Dados de contato são automaticamente ocultados</li>
+              <li>• Negocie com segurança através do chat interno</li>
+              <li>• Sempre verifique a documentação do veículo</li>
             </ul>
           </div>
         </div>

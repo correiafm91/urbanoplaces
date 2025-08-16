@@ -1,210 +1,196 @@
 import { useState, useEffect } from "react";
-import { useParams, Navigate, useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Calendar, Gauge, Phone, MessageCircle, Eye, User } from "lucide-react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Heart, ArrowLeft, User, MapPin, Car, Calendar, Gauge, MessageCircle } from "lucide-react";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { CategoryBadge } from "@/components/CategoryBadge";
 import { VerificationBadge } from "@/components/VerificationBadge";
 import { SellerProfileModal } from "@/components/SellerProfileModal";
+import { ChatModal } from "@/components/ChatModal";
+
+interface City {
+  name: string;
+  state: string;
+}
+
+interface Profile {
+  id: string;
+  full_name: string;
+  profile_photo: string | null;
+  profile_completed: boolean | null;
+  cpf: string | null;
+  created_at: string;
+}
 
 interface ListingDetail {
   id: string;
   title: string;
   description: string;
   price: number;
+  images: string[];
   brand: string;
   model: string;
   year: number;
-  mileage?: number;
-  color?: string;
-  images: string[];
-  category: string;
-  city: {
-    name: string;
-    state: string;
-    zip_code?: string;
-  };
-  created_at: string;
-  is_featured: boolean;
-  plan_id?: string;
-  profiles: {
-    id: string;
-    full_name: string;
-    phone_display?: string;
-    user_type?: string;
-    razao_social?: string;
-    profile_photo?: string;
-    profile_completed?: boolean;
-  };
-  plans?: {
-    plan_type: string;
-  };
+  mileage: number | null;
+  color: string | null;
+  vehicle_features: string[] | null;
+  other_characteristics: string[] | null;
+  category: string | null;
+  is_featured: boolean | null;
+  user_id: string;
+  profiles: Profile | null;
+  cities: City | null;
 }
 
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isFavorited, setIsFavorited] = useState(false);
   const [showSellerModal, setShowSellerModal] = useState(false);
-  const { toast } = useToast();
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     if (id) {
       fetchListing();
-      incrementViews();
+      checkCurrentUser();
     }
   }, [id]);
 
+  const checkCurrentUser = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    setCurrentUser(userData?.user);
+  };
+
   const fetchListing = async () => {
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase
         .from('listings')
         .select(`
           *,
-          city:cities(name, state, zip_code),
-          profiles!inner(id, full_name, phone_display, user_type, razao_social, profile_photo, profile_completed),
-          plans(plan_type)
+          profiles!listings_user_id_fkey (
+            id,
+            full_name,
+            profile_photo,
+            profile_completed,
+            cpf,
+            created_at
+          ),
+          cities (
+            name,
+            state
+          )
         `)
         .eq('id', id)
         .eq('is_active', true)
         .single();
 
-      if (error) {
-        console.error('Error fetching listing:', error);
-        throw error;
-      }
-      
-      setListing(data);
+      if (error) throw error;
 
-      // Check if user has favorited this listing
-      const { data: user } = await supabase.auth.getUser();
-      if (user?.user) {
-        const { data: favorite } = await supabase
-          .from('user_favorites')
-          .select('id')
-          .eq('user_id', user.user.id)
-          .eq('listing_id', id)
-          .single();
-        
-        setIsFavorite(!!favorite);
-      }
+      setListing(data);
+      await checkFavoriteStatus();
+      await incrementViews();
     } catch (error: any) {
-      console.error('Error fetching listing:', error);
       toast({
         title: "Erro",
         description: "Anúncio não encontrado",
         variant: "destructive",
       });
+      navigate('/');
     } finally {
       setLoading(false);
     }
   };
 
-  const incrementViews = async () => {
+  const checkFavoriteStatus = async () => {
     try {
-      const { data: existingDetails } = await supabase
-        .from('listing_details')
-        .select('views_count')
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
+
+      const { data } = await supabase
+        .from('user_favorites')
+        .select('id')
+        .eq('user_id', userData.user.id)
         .eq('listing_id', id)
         .single();
 
-      if (existingDetails) {
-        await supabase
-          .from('listing_details')
-          .update({ 
-            views_count: (existingDetails.views_count || 0) + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('listing_id', id);
-      } else {
-        await supabase
-          .from('listing_details')
-          .insert({
-            listing_id: id,
-            views_count: 1
-          });
-      }
+      setIsFavorited(!!data);
     } catch (error) {
-      console.error('Error incrementing views:', error);
+      // Não é erro se não estiver favoritado
     }
   };
 
   const toggleFavorite = async () => {
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user?.user) {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
         toast({
-          title: "Login necessário",
-          description: "Faça login para salvar anúncios",
+          title: "Erro",
+          description: "Faça login para favoritar anúncios",
           variant: "destructive",
         });
         return;
       }
 
-      if (isFavorite) {
+      if (isFavorited) {
         await supabase
           .from('user_favorites')
           .delete()
-          .eq('user_id', user.user.id)
+          .eq('user_id', userData.user.id)
           .eq('listing_id', id);
-        setIsFavorite(false);
-        toast({
-          title: "Removido dos favoritos",
-        });
       } else {
         await supabase
           .from('user_favorites')
           .insert({
-            user_id: user.user.id,
-            listing_id: id
+            user_id: userData.user.id,
+            listing_id: id,
           });
-        setIsFavorite(true);
-        toast({
-          title: "Adicionado aos favoritos",
-        });
       }
+
+      setIsFavorited(!isFavorited);
+      toast({
+        title: isFavorited ? "Removido dos favoritos" : "Adicionado aos favoritos",
+        description: isFavorited ? "Anúncio removido da sua lista" : "Anúncio salvo na sua lista",
+      });
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: "Erro ao atualizar favoritos",
         variant: "destructive",
       });
     }
   };
 
-  const handleContactClick = async () => {
+  const incrementViews = async () => {
     try {
-      const { data: existingDetails } = await supabase
+      // Incrementar visualizações
+      const { data: detailsData } = await supabase
         .from('listing_details')
-        .select('contact_clicks')
+        .select('views_count')
         .eq('listing_id', id)
         .single();
 
-      if (existingDetails) {
+      if (detailsData) {
         await supabase
           .from('listing_details')
-          .update({ 
-            contact_clicks: (existingDetails.contact_clicks || 0) + 1,
-            updated_at: new Date().toISOString()
-          })
+          .update({ views_count: (detailsData.views_count || 0) + 1 })
           .eq('listing_id', id);
       } else {
         await supabase
           .from('listing_details')
-          .insert({
-            listing_id: id,
-            contact_clicks: 1
-          });
+          .insert({ listing_id: id, views_count: 1 });
       }
     } catch (error) {
-      console.error('Error updating contact clicks:', error);
+      console.error('Erro ao incrementar visualizações:', error);
     }
   };
 
@@ -216,133 +202,154 @@ export default function ListingDetail() {
     }).format(price);
   };
 
-  const formatMileage = (mileage?: number) => {
-    if (!mileage) return "Não informado";
-    return `${mileage.toLocaleString('pt-BR')} km`;
-  };
-
-  const formatPhoneForWhatsApp = (phone?: string) => {
-    if (!phone) return '';
-    return phone.replace(/\D/g, '');
-  };
-
-  const viewSellerProfile = () => {
-    setShowSellerModal(true);
-  };
+  const isOwner = currentUser && listing && currentUser.id === listing.user_id;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse">
-            <div className="bg-muted rounded-lg h-64 mb-6"></div>
-            <div className="bg-muted rounded h-8 w-3/4 mb-4"></div>
-            <div className="bg-muted rounded h-4 w-1/2"></div>
-          </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Carregando anúncio...</p>
         </div>
       </div>
     );
   }
 
-  if (!listing) {
-    return <Navigate to="/" replace />;
-  }
+  if (!listing) return null;
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Images */}
-          <div className="space-y-4">
-            <div className="relative">
-              <ImageCarousel
-                images={listing.images || []}
-                title={listing.title}
-                currentIndex={currentImageIndex}
-                onIndexChange={setCurrentImageIndex}
-              />
-              
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-2 right-2 bg-background/80 hover:bg-background"
-                onClick={toggleFavorite}
-              >
-                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-              </Button>
-            </div>
-          </div>
+        <Button
+          variant="ghost"
+          onClick={() => navigate(-1)}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar
+        </Button>
 
-          {/* Details */}
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <CategoryBadge category={listing.category} />
-                <Badge variant="secondary" className="text-xs">
-                  {listing.brand} {listing.model}
-                </Badge>
-                <span className="text-sm text-muted-foreground">{listing.year}</span>
-              </div>
-              
-              <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
-              <div className="text-4xl font-bold mb-4">
-                {formatPrice(listing.price)}
-              </div>
-            </div>
-
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Images */}
             <Card>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <div>{listing.city.name}, {listing.city.state}</div>
-                      {listing.city.zip_code && (
-                        <div className="text-xs text-muted-foreground">CEP: {listing.city.zip_code}</div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {listing.mileage && (
-                    <div className="flex items-center gap-2">
-                      <Gauge className="w-4 h-4 text-muted-foreground" />
-                      <span>{formatMileage(listing.mileage)}</span>
-                    </div>
-                  )}
-                  
-                  {listing.color && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full border" style={{backgroundColor: listing.color.toLowerCase()}}></div>
-                      <span>{listing.color}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span>{new Date(listing.created_at).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                </div>
+              <CardContent className="p-0">
+                <ImageCarousel images={listing.images || []} />
               </CardContent>
             </Card>
 
-            {/* Contact Info */}
+            {/* Title and Price */}
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">Vendedor</h3>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
+                    <div className="flex items-center gap-2 mb-2">
+                      <CategoryBadge category={listing.category || 'carros'} />
+                      {listing.is_featured && (
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          Destaque
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={viewSellerProfile}
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleFavorite}
+                    className={isFavorited ? "text-red-500" : "text-muted-foreground"}
                   >
-                    <User className="w-4 h-4 mr-2" />
-                    Ver Perfil
+                    <Heart className={`w-5 h-5 ${isFavorited ? "fill-current" : ""}`} />
                   </Button>
                 </div>
                 
+                <p className="text-4xl font-bold text-primary mb-4">
+                  {formatPrice(listing.price)}
+                </p>
+                
+                <p className="text-muted-foreground">{listing.description}</p>
+              </CardContent>
+            </Card>
+
+            {/* Vehicle Details */}
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Detalhes do Veículo</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="flex items-center gap-2">
+                    <Car className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Marca</p>
+                      <p className="font-medium">{listing.brand}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Car className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Modelo</p>
+                      <p className="font-medium">{listing.model}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Ano</p>
+                      <p className="font-medium">{listing.year}</p>
+                    </div>
+                  </div>
+                  {listing.mileage && (
+                    <div className="flex items-center gap-2">
+                      <Gauge className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Quilometragem</p>
+                        <p className="font-medium">{listing.mileage.toLocaleString('pt-BR')} km</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {listing.color && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground">Cor</p>
+                    <p className="font-medium">{listing.color}</p>
+                  </div>
+                )}
+
+                {listing.vehicle_features && listing.vehicle_features.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Características</p>
+                    <div className="flex flex-wrap gap-2">
+                      {listing.vehicle_features.map((feature, index) => (
+                        <Badge key={index} variant="outline">{feature}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {listing.other_characteristics && listing.other_characteristics.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Outras características</p>
+                    <div className="flex flex-wrap gap-2">
+                      {listing.other_characteristics.map((characteristic, index) => (
+                        <Badge key={index} variant="outline">{characteristic}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Seller Info */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-4">Vendedor</h3>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-                    {listing.profiles.profile_photo ? (
+                    {listing.profiles?.profile_photo ? (
                       <img
                         src={listing.profiles.profile_photo}
                         alt="Foto do vendedor"
@@ -352,64 +359,104 @@ export default function ListingDetail() {
                       <User className="w-6 h-6 text-muted-foreground" />
                     )}
                   </div>
-                  
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <div className="font-medium">
-                        {listing.profiles.user_type === 'pj' 
-                          ? listing.profiles.razao_social 
-                          : listing.profiles.full_name}
-                      </div>
-                      <VerificationBadge isVerified={listing.profiles.profile_completed || false} />
+                      <p className="font-medium">{listing.profiles?.full_name}</p>
+                      <VerificationBadge isVerified={listing.profiles?.profile_completed || false} />
                     </div>
+                    <p className="text-sm text-muted-foreground">Pessoa Física</p>
                   </div>
                 </div>
-                
-                {listing.profiles.phone_display && (
-                  <div className="flex gap-2">
+
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowSellerModal(true)}
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Ver Perfil
+                  </Button>
+
+                  {!isOwner && currentUser && (
                     <Button
-                      className="flex-1"
-                      onClick={() => {
-                        handleContactClick();
-                        window.location.href = `tel:${listing.profiles.phone_display}`;
-                      }}
+                      className="w-full"
+                      onClick={() => setShowChatModal(true)}
+                      style={{ backgroundColor: '#FFCD44', color: 'black' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FFD700'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FFCD44'}
                     >
-                      <Phone className="w-4 h-4 mr-2" />
-                      {listing.profiles.phone_display}
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Chat Seguro
                     </Button>
-                    
-                    <Button
-                      size="icon"
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() => {
-                        handleContactClick();
-                        window.open(`https://wa.me/55${formatPhoneForWhatsApp(listing.profiles.phone_display)}`, '_blank');
-                      }}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
+                  )}
+
+                  {!currentUser && (
+                    <div className="bg-muted p-4 rounded-lg text-center">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Faça login para entrar em contato
+                      </p>
+                      <Link to="/auth">
+                        <Button size="sm" variant="outline">Fazer Login</Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
-            {/* Description */}
+            {/* Location */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Descrição</h3>
-                <p className="whitespace-pre-wrap">{listing.description}</p>
+                <h3 className="font-semibold mb-4">Localização</h3>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                  <span>{listing.cities?.name}, {listing.cities?.state}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Security Notice */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  🔒 Marketplace Seguro
+                </h3>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>• Use apenas o chat interno da plataforma</p>
+                  <p>• Dados de contato são automaticamente ocultados</p>
+                  <p>• Sempre verifique a documentação do veículo</p>
+                  <p>• Prefira locais públicos para encontros</p>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
-
-        {/* Seller Profile Modal */}
-        <SellerProfileModal
-          isOpen={showSellerModal}
-          onClose={() => setShowSellerModal(false)}
-          seller={listing.profiles}
-        />
       </div>
+
+      {/* Modals */}
+      <SellerProfileModal
+        isOpen={showSellerModal}
+        onClose={() => setShowSellerModal(false)}
+        seller={listing.profiles ? {
+          ...listing.profiles,
+          city: listing.cities
+        } : null}
+        onStartChat={() => {
+          setShowSellerModal(false);
+          setShowChatModal(true);
+        }}
+      />
+
+      {listing && (
+        <ChatModal
+          isOpen={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          listingId={listing.id}
+          sellerId={listing.user_id}
+          listingTitle={listing.title}
+        />
+      )}
     </div>
   );
 }

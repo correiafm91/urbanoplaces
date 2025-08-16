@@ -19,14 +19,8 @@ interface City {
 
 interface ProfileData {
   full_name: string;
-  phone: string;
-  phone_display: string;
-  whatsapp: string;
-  instagram: string;
   user_type: string;
   cpf: string;
-  cnpj: string;
-  razao_social: string;
   city_id: string;
   profile_photo: string;
 }
@@ -44,14 +38,8 @@ export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
   const [formData, setFormData] = useState<ProfileData>({
     full_name: "",
-    phone: "",
-    phone_display: "",
-    whatsapp: "",
-    instagram: "",
     user_type: "pf",
     cpf: "",
-    cnpj: "",
-    razao_social: "",
     city_id: "",
     profile_photo: "",
   });
@@ -83,14 +71,8 @@ export default function Profile() {
         .from('profiles')
         .update({
           full_name: formData.full_name,
-          phone: formData.phone,
-          phone_display: formData.phone_display,
-          whatsapp: formData.whatsapp,
-          instagram: formData.instagram,
           user_type: formData.user_type,
           cpf: formData.cpf,
-          cnpj: formData.cnpj,
-          razao_social: formData.razao_social,
           city_id: formData.city_id,
           profile_photo: formData.profile_photo
         })
@@ -130,14 +112,8 @@ export default function Profile() {
         setProfile(profileData);
         setFormData({
           full_name: profileData?.full_name || "",
-          phone: profileData?.phone || "",
-          phone_display: profileData?.phone_display || "",
-          whatsapp: profileData?.whatsapp || "",
-          instagram: profileData?.instagram || "",
           user_type: profileData?.user_type || "pf",
           cpf: profileData?.cpf || "",
-          cnpj: profileData?.cnpj || "",
-          razao_social: profileData?.razao_social || "",
           city_id: profileData?.city_id || "",
           profile_photo: profileData?.profile_photo || "",
         });
@@ -219,124 +195,30 @@ export default function Profile() {
 
                     {/* User Name Display */}
                     <div className="text-center">
-                      <h2 className="text-xl font-semibold">
-                        {formData.user_type === 'pj' ? formData.razao_social : formData.full_name}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        {formData.user_type === 'pj' ? 'Pessoa Jurídica' : 'Pessoa Física'}
-                      </p>
+                      <h2 className="text-xl font-semibold">{formData.full_name}</h2>
+                      <p className="text-sm text-muted-foreground">Pessoa Física</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="user_type">Tipo de usuário</Label>
-                        <Select 
-                          value={formData.user_type || "pf"} 
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, user_type: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pf">Pessoa Física</SelectItem>
-                            <SelectItem value="pj">Pessoa Jurídica</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {formData.user_type === 'pj' ? (
-                        <>
-                          <div>
-                            <Label htmlFor="razao_social">Razão Social</Label>
-                            <Input
-                              id="razao_social"
-                              type="text"
-                              value={formData.razao_social || ""}
-                              onChange={(e) => setFormData(prev => ({ ...prev, razao_social: e.target.value }))}
-                              placeholder="Nome da empresa"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="cnpj">CNPJ</Label>
-                            <Input
-                              id="cnpj"
-                              type="text"
-                              value={formData.cnpj || ""}
-                              onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
-                              placeholder="00.000.000/0000-00"
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            <Label htmlFor="full_name">Nome Completo</Label>
-                            <Input
-                              id="full_name"
-                              type="text"
-                              value={formData.full_name}
-                              onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                              placeholder="Seu nome completo"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="cpf">CPF</Label>
-                            <Input
-                              id="cpf"
-                              type="text"
-                              value={formData.cpf || ""}
-                              onChange={(e) => setFormData(prev => ({ ...prev, cpf: e.target.value }))}
-                              placeholder="000.000.000-00"
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="phone">Telefone</Label>
+                        <Label htmlFor="full_name">Nome Completo</Label>
                         <Input
-                          id="phone"
-                          type="tel"
-                          value={formData.phone || ""}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                          placeholder="(11) 99999-9999"
+                          id="full_name"
+                          type="text"
+                          value={formData.full_name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                          placeholder="Seu nome completo"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="phone_display">Telefone para exibição</Label>
+                        <Label htmlFor="cpf">CPF</Label>
                         <Input
-                          id="phone_display"
-                          type="tel"
-                          value={formData.phone_display || ""}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone_display: e.target.value }))}
-                          placeholder="(11) 99999-9999"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="whatsapp">WhatsApp</Label>
-                        <Input
-                          id="whatsapp"
-                          type="tel"
-                          value={formData.whatsapp || ""}
-                          onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
-                          placeholder="(11) 99999-9999"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="instagram">Instagram</Label>
-                        <Input
-                          id="instagram"
+                          id="cpf"
                           type="text"
-                          value={formData.instagram || ""}
-                          onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
-                          placeholder="@usuario"
+                          value={formData.cpf || ""}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cpf: e.target.value }))}
+                          placeholder="000.000.000-00"
                         />
                       </div>
                     </div>
@@ -358,6 +240,14 @@ export default function Profile() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-blue-900 mb-2">🔒 Marketplace Seguro</h4>
+                      <p className="text-sm text-blue-700">
+                        Por segurança, todas as comunicações são feitas através do chat interno da plataforma.
+                        Dados de contato são automaticamente ocultados para proteger você contra fraudes.
+                      </p>
                     </div>
 
                     <Button 
