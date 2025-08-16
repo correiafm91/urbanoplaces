@@ -72,15 +72,17 @@ export function ChatModal({
 
       setCurrentUserId(userData.user.id);
 
-      // Verificar se já existe uma conversa - usando rpc para acessar as novas tabelas
-      const { data: existingConversation } = await supabase.rpc('get_or_create_conversation', {
+      // Usar RPC para buscar ou criar conversa
+      const { data: conversationId, error } = await supabase.rpc('get_or_create_conversation', {
         p_listing_id: listingId,
         p_buyer_id: userData.user.id,
         p_seller_id: sellerId
       });
 
-      if (existingConversation) {
-        await loadMessages(existingConversation);
+      if (error) throw error;
+
+      if (conversationId) {
+        await loadMessages(conversationId);
       }
     } catch (error: any) {
       console.error('Erro ao inicializar chat:', error);
@@ -94,9 +96,11 @@ export function ChatModal({
 
   const loadMessages = async (conversationId: string) => {
     try {
-      const { data: messages } = await supabase.rpc('get_conversation_messages', {
+      const { data: messages, error } = await supabase.rpc('get_conversation_messages', {
         p_conversation_id: conversationId
       });
+
+      if (error) throw error;
 
       setConversation({
         id: conversationId,

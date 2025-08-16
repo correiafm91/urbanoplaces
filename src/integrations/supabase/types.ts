@@ -355,7 +355,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_conversation_messages: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          content: string
+          created_at: string
+          filtered_content: string
+          id: string
+          is_filtered: boolean
+          sender_id: string
+        }[]
+      }
+      get_or_create_conversation: {
+        Args: { p_buyer_id: string; p_listing_id: string; p_seller_id: string }
+        Returns: string
+      }
+      send_message: {
+        Args: {
+          p_content: string
+          p_conversation_id: string
+          p_filtered_content?: string
+          p_is_filtered?: boolean
+          p_sender_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
